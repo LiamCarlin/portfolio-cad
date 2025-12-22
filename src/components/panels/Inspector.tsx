@@ -58,6 +58,7 @@ export default function Inspector({ className, style }: InspectorProps) {
     rightPanelCollapsed,
     togglePanel,
     theme,
+    showProjectOverview: showOverviewState,
   } = usePortfolioStore();
   
   const lightMode = theme === 'light';
@@ -94,14 +95,14 @@ export default function Inspector({ className, style }: InspectorProps) {
     );
   }
   
-  // Show project overview when no subsystem/part is selected
-  const showProjectOverview = selectedProject && selectedSubsystemIds.length === 0 && !activeTaggedPart;
   // Show tagged part details
   const showTaggedPartDetails = activeTaggedPart !== null;
   // Show subsystem details when one is selected
   const showSubsystemDetails = selectedSubsystems.length === 1 && !activeTaggedPart;
   // Show aggregated stats when multiple are selected
   const showAggregatedStats = selectedSubsystems.length > 1 && !activeTaggedPart;
+  // Show project overview in inspector when nothing else is selected (even in 3D Model tab)
+  const showProjectOverview = selectedProject && selectedSubsystemIds.length === 0 && !activeTaggedPart;
   
   return (
     <div className={`${className} ${lightMode ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'} border-l flex flex-col`} style={style}>
@@ -127,15 +128,15 @@ export default function Inspector({ className, style }: InspectorProps) {
         ) : showTaggedPartDetails ? (
           // Tagged part details
           <TaggedPartInfo part={activeTaggedPart!} lightMode={lightMode} />
-        ) : showProjectOverview ? (
-          // Project overview
-          <ProjectOverview project={selectedProject} lightMode={lightMode} />
         ) : showSubsystemDetails ? (
           // Single subsystem details
           <SubsystemDetails subsystem={selectedSubsystems[0]} lightMode={lightMode} />
         ) : showAggregatedStats ? (
           // Aggregated stats for multiple selection
           <AggregatedStats subsystems={selectedSubsystems} lightMode={lightMode} />
+        ) : showProjectOverview ? (
+          // Project overview (default when project selected but no subsystem)
+          <ProjectOverview project={selectedProject} lightMode={lightMode} />
         ) : null}
       </div>
     </div>
@@ -498,8 +499,121 @@ function ProjectOverview({ project, lightMode }: { project: any; lightMode: bool
           )}
         </div>
       </div>
+
+      {/* Content Blocks - Full project writeup */}
+      {project.contentBlocks && project.contentBlocks.length > 0 && (
+        <div className="mt-6 pt-6 border-t border-gray-700">
+          <div className={`text-xs uppercase tracking-wider mb-4 flex items-center gap-1 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <FileText size={12} />
+            Project Details
+          </div>
+          <div className="space-y-4">
+            {project.contentBlocks.map((block: any) => (
+              <ContentBlockRenderer key={block.id} block={block} lightMode={lightMode} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// Content Block Renderer Component
+function ContentBlockRenderer({ block, lightMode }: { block: any; lightMode: boolean }) {
+  switch (block.type) {
+    case 'heading':
+      const headingSize = block.level === 1 ? 'text-xl' : block.level === 3 ? 'text-base' : 'text-lg';
+      const headingClass = `${headingSize} font-bold ${lightMode ? 'text-gray-900' : 'text-white'}`;
+      if (block.level === 1) return <h1 className={headingClass}>{block.content}</h1>;
+      if (block.level === 3) return <h3 className={headingClass}>{block.content}</h3>;
+      return <h2 className={headingClass}>{block.content}</h2>;
+    
+    case 'text':
+      return (
+        <p className={`text-sm leading-relaxed whitespace-pre-wrap ${lightMode ? 'text-gray-600' : 'text-gray-300'}`}>
+          {block.content}
+        </p>
+      );
+    
+    case 'list':
+      return (
+        <ul className={`text-sm space-y-1 list-disc list-inside ${lightMode ? 'text-gray-600' : 'text-gray-300'}`}>
+          {(block.items || []).map((item: string, i: number) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      );
+    
+    case 'quote':
+      return (
+        <blockquote className={`border-l-4 pl-4 py-2 ${lightMode ? 'border-blue-400 bg-blue-50' : 'border-blue-500 bg-blue-500/10'}`}>
+          <p className={`text-sm italic ${lightMode ? 'text-gray-600' : 'text-gray-300'}`}>
+            "{block.content}"
+          </p>
+          {block.author && (
+            <cite className={`text-xs mt-1 block ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              — {block.author}
+            </cite>
+          )}
+        </blockquote>
+      );
+    
+    case 'image':
+      return block.imageData ? (
+        <div className="space-y-2">
+          <img 
+            src={block.imageData} 
+            alt={block.caption || 'Project image'} 
+            className="w-full rounded-lg"
+          />
+          {block.caption && (
+            <p className={`text-xs text-center ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              {block.caption}
+            </p>
+          )}
+        </div>
+      ) : null;
+    
+    case 'gallery':
+      return block.images && block.images.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2">
+          {block.images.map((img: any, i: number) => (
+            <img 
+              key={i}
+              src={img.data || img} 
+              alt={img.caption || `Gallery image ${i + 1}`}
+              className="w-full h-24 object-cover rounded"
+            />
+          ))}
+        </div>
+      ) : null;
+    
+    case 'link':
+      return block.url ? (
+        <a
+          href={block.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`block p-3 rounded-lg border transition-colors ${
+            lightMode 
+              ? 'bg-gray-50 border-gray-200 hover:bg-gray-100' 
+              : 'bg-gray-800 border-gray-700 hover:bg-gray-750'
+          }`}
+        >
+          <div className={`text-sm font-medium ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+            {block.title || block.url}
+          </div>
+          {block.content && (
+            <div className={`text-xs mt-1 ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              {block.content}
+            </div>
+          )}
+        </a>
+      ) : null;
+    
+    default:
+      return null;
+  }
 }
 
 // Subsystem Details Component  

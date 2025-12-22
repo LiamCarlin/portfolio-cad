@@ -82,6 +82,48 @@ export interface UploadedImage {
   caption?: string;
 }
 
+// Shape types for 3D annotations
+export type AnnotationShape = 'sphere' | 'cube' | 'cylinder' | 'cone' | 'ring' | 'arrow';
+
+// Dimensions for different shapes
+export interface AnnotationDimensions {
+  // For cube/box: width (x), height (y), depth (z)
+  width?: number;
+  height?: number;
+  depth?: number;
+  // For sphere: radius
+  radius?: number;
+  // For cylinder/cone: radius and height
+  radiusTop?: number;
+  radiusBottom?: number;
+  // For ring/torus: ring radius and tube radius
+  ringRadius?: number;
+  tubeRadius?: number;
+}
+
+// 3D Annotation marker - placed directly on model surface via raycasting
+export interface CADAnnotation {
+  id: string;
+  // 3D world position on the model surface
+  position: [number, number, number];
+  // Rotation in radians [x, y, z]
+  rotation: [number, number, number];
+  // Surface normal at this point (for orienting labels/markers)
+  normal: [number, number, number];
+  // Optional: name of the mesh that was hit
+  meshName?: string;
+  // Shape of the marker
+  shape: AnnotationShape;
+  // Style
+  color: string;
+  // Legacy single size (for backward compatibility)
+  size: number;
+  // Specific dimensions for the shape
+  dimensions?: AnnotationDimensions;
+  // Optional label
+  label?: string;
+}
+
 export interface Subsystem {
   id: string;
   name: string;
@@ -94,6 +136,8 @@ export interface Subsystem {
   explodeVector: [number, number, number];
   color: string;
   children?: Subsystem[];
+  // CAD annotations - regions marked on the 3D model for this subsystem
+  cadAnnotations?: CADAnnotation[];
 }
 
 export interface Project {
@@ -170,6 +214,7 @@ interface PortfolioState {
   selectedTaggedPartId: string | null;
   hoveredSubsystemId: string | null;
   hoveredTaggedPartId: string | null;
+  showProjectOverview: boolean; // Show project overview/content in inspector
   
   // View state
   viewMode: ViewMode;
@@ -222,6 +267,7 @@ interface PortfolioState {
   clearSelection: () => void;
   setHoveredSubsystem: (subsystemId: string | null) => void;
   setHoveredTaggedPart: (partId: string | null) => void;
+  setShowProjectOverview: (show: boolean) => void;
   
   setViewMode: (mode: ViewMode) => void;
   setToolMode: (mode: ToolMode) => void;
@@ -285,6 +331,7 @@ export const usePortfolioStore = create<PortfolioState>()(
     selectedTaggedPartId: null,
     hoveredSubsystemId: null,
     hoveredTaggedPartId: null,
+    showProjectOverview: false, // Default to CAD view (3D Model tab)
     
     viewMode: 'assembly',
     toolMode: 'select',
@@ -316,13 +363,13 @@ export const usePortfolioStore = create<PortfolioState>()(
     leftPanelCollapsed: false,
     rightPanelCollapsed: false,
     bottomPanelCollapsed: false,
-    // Min/max bounds for resizing
+    // Min/max bounds for resizing - expanded for better content viewing
     leftPanelMinWidth: 200,
-    leftPanelMaxWidth: 500,
+    leftPanelMaxWidth: 600,
     rightPanelMinWidth: 300,
-    rightPanelMaxWidth: 700,
+    rightPanelMaxWidth: 900,
     bottomPanelMinHeight: 100,
-    bottomPanelMaxHeight: 400,
+    bottomPanelMaxHeight: 600,
     
     commandPaletteOpen: false,
     
@@ -336,6 +383,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         selectedProjectId: projectId,
         selectedSubsystemIds: [],
         selectedTaggedPartId: null,
+        showProjectOverview: false, // Default to CAD view (3D Model tab)
         explodeAmount: 0,
         // Expand right panel if collapsed, or ensure minimum width
         rightPanelCollapsed: false,
@@ -352,9 +400,10 @@ export const usePortfolioStore = create<PortfolioState>()(
           selectedSubsystemIds: isSelected
             ? selectedSubsystemIds.filter(id => id !== subsystemId)
             : [...selectedSubsystemIds, subsystemId],
+          showProjectOverview: false, // Hide overview when selecting subsystem
         });
       } else {
-        set({ selectedSubsystemIds: [subsystemId] });
+        set({ selectedSubsystemIds: [subsystemId], showProjectOverview: false });
       }
     },
     
@@ -367,6 +416,8 @@ export const usePortfolioStore = create<PortfolioState>()(
     setHoveredSubsystem: (subsystemId) => set({ hoveredSubsystemId: subsystemId }),
     
     setHoveredTaggedPart: (partId) => set({ hoveredTaggedPartId: partId }),
+    
+    setShowProjectOverview: (show) => set({ showProjectOverview: show, selectedSubsystemIds: show ? [] : get().selectedSubsystemIds }),
     
     setViewMode: (mode) => set({ viewMode: mode }),
     

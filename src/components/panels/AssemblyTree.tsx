@@ -12,6 +12,7 @@ import {
   FlaskConical,
   Package,
   Filter,
+  FileText,
 } from 'lucide-react';
 import { usePortfolioStore, Project, Subsystem } from '@/store/usePortfolioStore';
 
@@ -109,12 +110,13 @@ interface ProjectNodeProps {
 }
 
 function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
-  const { selectedProjectId, selectProject, theme } = usePortfolioStore();
+  const { selectedProjectId, selectProject, showProjectOverview, setShowProjectOverview, theme } = usePortfolioStore();
   
   const isSelected = selectedProjectId === project.id;
   const isExpanded = expanded.has(project.id);
   const CategoryIcon = categoryIcons[project.category];
   const lightMode = theme === 'light';
+  const hasContentBlocks = project.contentBlocks && project.contentBlocks.length > 0;
   
   return (
     <div className="mb-1">
@@ -149,9 +151,54 @@ function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
         </div>
       </div>
       
-      {/* Subsystems */}
+      {/* Expanded content: CAD Model, Overview + Subsystems */}
       {isExpanded && (
         <div className={`ml-2 border-l pl-2 mt-1 ${lightMode ? 'border-gray-300' : 'border-gray-700'}`}>
+          {/* 3D Model - First item (default) */}
+          <div
+            className={`
+              flex items-center gap-1 py-1.5 px-2 cursor-pointer rounded transition-colors mb-1
+              ${isSelected && !showProjectOverview 
+                ? 'bg-blue-600 text-white' 
+                : lightMode ? 'text-gray-700 hover:bg-gray-200/50' : 'text-gray-300 hover:bg-gray-700/50'}
+            `}
+            onClick={() => {
+              selectProject(project.id);
+              setShowProjectOverview(false);
+            }}
+          >
+            <Box size={14} className={isSelected && !showProjectOverview ? 'text-white' : 'text-green-400'} />
+            <span className="text-sm font-medium">3D Model</span>
+            {project.cadModel && (
+              <span className={`text-xs ml-auto ${isSelected && !showProjectOverview ? 'text-blue-200' : lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {project.cadModel.name}
+              </span>
+            )}
+          </div>
+
+          {/* Project Overview - Second item */}
+          <div
+            className={`
+              flex items-center gap-1 py-1.5 px-2 cursor-pointer rounded transition-colors mb-1
+              ${isSelected && showProjectOverview 
+                ? 'bg-blue-600 text-white' 
+                : lightMode ? 'text-gray-700 hover:bg-gray-200/50' : 'text-gray-300 hover:bg-gray-700/50'}
+            `}
+            onClick={() => {
+              selectProject(project.id);
+              setShowProjectOverview(true);
+            }}
+          >
+            <FileText size={14} className={isSelected && showProjectOverview ? 'text-white' : 'text-blue-400'} />
+            <span className="text-sm font-medium">Project Overview</span>
+            {hasContentBlocks && (
+              <span className={`text-xs ml-auto ${isSelected && showProjectOverview ? 'text-blue-200' : lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {project.contentBlocks!.length} blocks
+              </span>
+            )}
+          </div>
+          
+          {/* Subsystems */}
           {project.subsystems.map((subsystem) => (
             <TreeNode
               key={subsystem.id}

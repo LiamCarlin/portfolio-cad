@@ -6,7 +6,7 @@ import { sampleProjects } from '@/data/sampleProjects';
 
 /**
  * Hook to load projects from localStorage (admin-created) or fall back to sample data
- * Priority: Admin projects > Sample projects
+ * Always loads sample projects, merges with any admin-created projects
  */
 export function useProjectsLoader() {
   const [isLoading, setIsLoading] = useState(true);
@@ -15,6 +15,9 @@ export function useProjectsLoader() {
   const projects = usePortfolioStore((state) => state.projects);
 
   useEffect(() => {
+    // Always start with sample projects
+    let allProjects: Project[] = [...sampleProjects];
+    
     // Check localStorage for admin-created projects
     const savedProjects = localStorage.getItem('portfoliocad-projects');
     
@@ -22,21 +25,20 @@ export function useProjectsLoader() {
       try {
         const parsed: Project[] = JSON.parse(savedProjects);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Use admin projects
-          setProjects(parsed);
-          selectProject(parsed[0].id);
-          setIsLoading(false);
-          return;
+          // Merge: use saved projects, but add any sample projects not in saved
+          const savedIds = new Set(parsed.map(p => p.id));
+          const newSampleProjects = sampleProjects.filter(sp => !savedIds.has(sp.id));
+          allProjects = [...parsed, ...newSampleProjects];
         }
       } catch (e) {
         console.error('Failed to parse saved projects:', e);
       }
     }
     
-    // Fall back to sample projects
-    setProjects(sampleProjects);
-    if (sampleProjects.length > 0) {
-      selectProject(sampleProjects[0].id);
+    // Set all projects
+    setProjects(allProjects);
+    if (allProjects.length > 0) {
+      selectProject(allProjects[0].id);
     }
     setIsLoading(false);
   }, [setProjects, selectProject]);

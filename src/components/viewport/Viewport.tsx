@@ -14,8 +14,9 @@ import {
   Center,
   Bounds,
 } from '@react-three/drei';
-import { usePortfolioStore, Subsystem, TaggedPart } from '@/store/usePortfolioStore';
+import { usePortfolioStore, Subsystem, TaggedPart, CADAnnotation } from '@/store/usePortfolioStore';
 import * as THREE from 'three';
+import ProjectContentViewer from './ProjectContentViewer';
 
 // Individual part component
 interface PartMeshProps {
@@ -258,6 +259,163 @@ function TaggedPartMarker({
   );
 }
 
+// Shape geometry component for viewport markers - supports dimensions
+function ViewportShapeGeometry({ shape, size, dimensions }: { 
+  shape: string; 
+  size: number;
+  dimensions?: {
+    width?: number;
+    height?: number;
+    depth?: number;
+    radius?: number;
+    radiusTop?: number;
+    radiusBottom?: number;
+    ringRadius?: number;
+    tubeRadius?: number;
+  };
+}) {
+  const d = dimensions || {};
+  
+  switch (shape) {
+    case 'sphere':
+      return <sphereGeometry args={[d.radius || size, 16, 16]} />;
+    case 'cube':
+      return <boxGeometry args={[d.width || size * 1.6, d.height || size * 1.6, d.depth || size * 1.6]} />;
+    case 'cylinder':
+      return <cylinderGeometry args={[d.radius || d.radiusTop || size, d.radius || d.radiusBottom || size, d.height || size * 2, 16]} />;
+    case 'cone':
+      return <coneGeometry args={[d.radiusBottom || size, d.height || size * 2, 16]} />;
+    case 'ring':
+      return <torusGeometry args={[d.ringRadius || size, d.tubeRadius || size * 0.3, 8, 24]} />;
+    case 'arrow':
+      return <coneGeometry args={[d.radiusBottom || size * 0.8, d.height || size * 2.5, 8]} />;
+    default:
+      return <sphereGeometry args={[d.radius || size, 16, 16]} />;
+  }
+}
+
+// Subsystem 3D Annotation Marker - renders different shapes in 3D space
+function SubsystemAnnotationMarker3D({ 
+  annotation,
+  subsystem,
+  isSelected,
+}: { 
+  annotation: CADAnnotation;
+  subsystem: Subsystem;
+  isSelected: boolean;
+}) {
+  const { selectSubsystem, setShowProjectOverview } = usePortfolioStore();
+  const [hovered, setHovered] = useState(false);
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  const handleClick = (e: any) => {
+    e.stopPropagation();
+    setShowProjectOverview(false);
+    selectSubsystem(subsystem.id, false);
+  };
+
+  // Pulse animation when selected
+  useFrame((state) => {
+    if (meshRef.current && (isSelected || hovered)) {
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.2;
+      meshRef.current.scale.setScalar(scale);
+    } else if (meshRef.current) {
+      meshRef.current.scale.setScalar(1);
+    }
+  });
+
+  const markerColor = isSelected ? '#fbbf24' : (annotation.color || subsystem.color);
+  const markerSize = annotation.size || 0.02;
+  const markerShape = annotation.shape || 'sphere';
+  const markerRotation = annotation.rotation || [0, 0, 0];
+  
+  return (
+    <group position={annotation.position} rotation={markerRotation as [number, number, number]}>
+      <mesh
+        ref={meshRef}
+        onClick={handleClick}
+        onPointerEnter={(e) => {
+          e.stopPropagation();
+          setHovered(true);
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerLeave={(e) => {
+          e.stopPropagation();
+          setHovered(false);
+          document.body.style.cursor = 'auto';
+        }}
+      >
+        <ViewportShapeGeometry shape={markerShape} size={markerSize} dimensions={annotation.dimensions} />
+        <meshStandardMaterial 
+          color={markerColor}
+          emissive={markerColor}
+          emissiveIntensity={isSelected ? 0.8 : hovered ? 0.5 : 0.3}
+          transparent
+          opacity={0.9}
+        />
+      </mesh>
+      
+      {/* Outer ring for selected state */}
+      {isSelected && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[markerSize * 1.5, markerSize * 0.1, 8, 32]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
+        </mesh>
+      )}
+      
+      {/* Label on hover or when selected */}
+      {(hovered || isSelected) && (
+        <Html
+          position={[0, markerSize * 3, 0]}
+          center
+          style={{ pointerEvents: 'none' }}
+        >
+          <div className={`
+            px-2 py-1 rounded text-xs whitespace-nowrap shadow-lg
+            ${isSelected 
+              ? 'bg-yellow-500 text-black font-bold' 
+              : 'bg-gray-800 text-white border border-gray-700'
+            }
+          `}>
+            {annotation.label || subsystem.name}
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
+// Container for all subsystem 3D annotations (rendered inside Canvas)
+function SubsystemAnnotations3D({ 
+  subsystems,
+  selectedSubsystemIds,
+}: { 
+  subsystems: Subsystem[];
+  selectedSubsystemIds: string[];
+}) {
+  if (subsystems.length === 0) return null;
+
+  return (
+    <group>
+      {subsystems.map(subsystem => {
+        const isSelected = selectedSubsystemIds.includes(subsystem.id);
+        return (
+          <group key={subsystem.id}>
+            {(subsystem.cadAnnotations || []).map(annotation => (
+              <SubsystemAnnotationMarker3D
+                key={annotation.id}
+                annotation={annotation}
+                subsystem={subsystem}
+                isSelected={isSelected}
+              />
+            ))}
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 // Main viewport component
 interface ViewportProps {
   className?: string;
@@ -272,6 +430,8 @@ export default function Viewport({ className }: ViewportProps) {
     showLabels,
     selectedTaggedPartId,
     hoveredTaggedPartId,
+    showProjectOverview,
+    selectedSubsystemIds,
   } = usePortfolioStore();
   
   const [cadModelUrl, setCadModelUrl] = useState<string | null>(null);
@@ -280,6 +440,24 @@ export default function Viewport({ className }: ViewportProps) {
   const selectedProject = useMemo(() => {
     return projects.find((p) => p.id === selectedProjectId);
   }, [projects, selectedProjectId]);
+
+  // Get all subsystems with annotations for overlay
+  const subsystemsWithAnnotations = useMemo(() => {
+    if (!selectedProject) return [];
+    const findAllSubsystems = (subs: Subsystem[]): Subsystem[] => {
+      let result: Subsystem[] = [];
+      for (const sub of subs) {
+        if (sub.cadAnnotations && sub.cadAnnotations.length > 0) {
+          result.push(sub);
+        }
+        if (sub.children) {
+          result = result.concat(findAllSubsystems(sub.children));
+        }
+      }
+      return result;
+    };
+    return findAllSubsystems(selectedProject.subsystems);
+  }, [selectedProject]);
 
   // Load CAD model URL - either from IndexedDB, inline data, or external URL
   useEffect(() => {
@@ -337,6 +515,15 @@ export default function Viewport({ className }: ViewportProps) {
   } = require('./ContentViews');
   
   const lightMode = usePortfolioStore.getState().theme === 'light';
+
+  // Show Project Content when showProjectOverview is true and no subsystem is selected
+  if (viewMode === 'assembly' && selectedProject && showProjectOverview && selectedSubsystemIds.length === 0) {
+    return (
+      <div className={`${className} ${lightMode ? 'bg-gray-100' : 'bg-gray-900'}`}>
+        <ProjectContentViewer project={selectedProject} lightMode={lightMode} />
+      </div>
+    );
+  }
   
   // Render different views based on viewMode
   if (viewMode !== 'assembly' && selectedProject) {
@@ -455,6 +642,11 @@ export default function Viewport({ className }: ViewportProps) {
               />
             ))}
             
+            {/* Subsystem 3D Annotations - markers placed on the model */}
+            <SubsystemAnnotations3D 
+              subsystems={subsystemsWithAnnotations}
+              selectedSubsystemIds={selectedSubsystemIds}
+            />
             {/* Legacy Subsystems (if no CAD model) */}
             {!hasCADModel && hasSubsystems && selectedProject.subsystems.map((subsystem) => (
               <PartMesh

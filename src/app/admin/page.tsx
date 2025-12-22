@@ -31,10 +31,11 @@ import {
   Tag,
   MousePointer,
 } from 'lucide-react';
-import { Project, Subsystem, Milestone, Configuration, ContentBlock, TaggedPart, CADModel, UploadedImage } from '@/store/usePortfolioStore';
+import { Project, Subsystem, Milestone, Configuration, ContentBlock, TaggedPart, CADModel, UploadedImage, CADAnnotation } from '@/store/usePortfolioStore';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { FileUpload, MultiImageUpload, ImagePreview } from '@/components/admin/FileUpload';
+import { sampleProjects } from '@/data/sampleProjects';
 
 // Dynamically import CAD viewer to avoid SSR issues
 const CADModelViewer = dynamic(
@@ -44,6 +45,19 @@ const CADModelViewer = dynamic(
     loading: () => (
       <div className="w-full h-full flex items-center justify-center bg-gray-900">
         <div className="text-gray-400">Loading 3D viewer...</div>
+      </div>
+    )
+  }
+);
+
+// Dynamically import Subsystem CAD Annotator
+const SubsystemCADAnnotator = dynamic(
+  () => import('@/components/admin/SubsystemCADAnnotator'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 flex items-center justify-center bg-gray-900 rounded-lg">
+        <div className="text-gray-400">Loading annotation tool...</div>
       </div>
     )
   }
@@ -199,16 +213,31 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Load projects from localStorage on mount
+  // Load projects from localStorage on mount, merge with sample projects
   useEffect(() => {
     if (!isAuthenticated) return;
+    
+    // Start with sample projects
+    let allProjects: Project[] = [...sampleProjects];
+    
     const saved = localStorage.getItem('portfoliocad-projects');
     if (saved) {
       try {
-        setProjects(JSON.parse(saved));
+        const savedProjects: Project[] = JSON.parse(saved);
+        if (Array.isArray(savedProjects) && savedProjects.length > 0) {
+          // Merge: use saved versions of projects, add any sample projects not in saved
+          const savedIds = new Set(savedProjects.map(p => p.id));
+          const newSampleProjects = sampleProjects.filter(sp => !savedIds.has(sp.id));
+          allProjects = [...savedProjects, ...newSampleProjects];
+        }
       } catch (e) {
         console.error('Failed to load projects:', e);
       }
+    }
+    
+    setProjects(allProjects);
+    if (allProjects.length > 0 && !selectedProjectId) {
+      setSelectedProjectId(allProjects[0].id);
     }
   }, [isAuthenticated]);
 
@@ -1202,6 +1231,7 @@ function SubsystemsEditor({ project, onUpdate }: { project: Project; onUpdate: (
           {project.subsystems.map((sub, index) => (
             <SubsystemItem
               key={sub.id}
+              project={project}
               subsystem={sub}
               isExpanded={expandedIds.has(sub.id)}
               isEditing={editingId === sub.id}
@@ -1218,6 +1248,7 @@ function SubsystemsEditor({ project, onUpdate }: { project: Project; onUpdate: (
 }
 
 function SubsystemItem({
+  project,
   subsystem,
   isExpanded,
   isEditing,
@@ -1226,6 +1257,7 @@ function SubsystemItem({
   onUpdate,
   onDelete,
 }: {
+  project: Project;
   subsystem: Subsystem;
   isExpanded: boolean;
   isEditing: boolean;
@@ -1406,6 +1438,23 @@ function SubsystemItem({
               />
               <button onClick={addOutcome} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Add</button>
             </div>
+          </div>
+
+          {/* CAD Annotation Section */}
+          <div className="pt-4 border-t border-gray-700">
+            <div className="flex items-center gap-2 mb-3">
+              <Box size={18} className="text-blue-400" />
+              <label className="text-sm font-medium text-white">Mark on CAD Model</label>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Draw on the 3D model to highlight which parts belong to this subsystem. 
+              Use the brush, line, rectangle, or circle tools to annotate.
+            </p>
+            <SubsystemCADAnnotator
+              project={project}
+              subsystem={subsystem}
+              onUpdateAnnotations={(annotations) => onUpdate({ cadAnnotations: annotations })}
+            />
           </div>
         </div>
       )}
