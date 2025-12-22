@@ -559,10 +559,11 @@ function ContentBlockRenderer({ block, lightMode }: { block: any; lightMode: boo
       );
     
     case 'image':
-      return block.imageData ? (
+      const imageSource = block.file || block.imageData || block.content;
+      return imageSource ? (
         <div className="space-y-2">
           <img 
-            src={block.imageData} 
+            src={imageSource} 
             alt={block.caption || 'Project image'} 
             className="w-full rounded-lg"
           />

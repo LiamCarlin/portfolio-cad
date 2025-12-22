@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Plus, Trash2, Upload } from 'lucide-react';
+import { X, Save, Plus, Trash2, Upload, GripVertical } from 'lucide-react';
 import { usePortfolioStore, Project, ContentBlock, Milestone } from '@/store/usePortfolioStore';
 
 interface InlineEditorProps {
@@ -201,6 +201,7 @@ interface ContentBlockEditorProps {
 export function ContentBlockEditor({ project, isOpen, onClose }: ContentBlockEditorProps) {
   const { updateProject, theme } = usePortfolioStore();
   const [blocks, setBlocks] = useState<ContentBlock[]>(project.contentBlocks || []);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   
   const lightMode = theme === 'light';
   const inputClass = `w-full ${lightMode ? 'bg-gray-100 border-gray-300' : 'bg-gray-800 border-gray-700'} border rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none ${lightMode ? 'text-gray-900' : 'text-white'}`;
@@ -223,6 +224,25 @@ export function ContentBlockEditor({ project, isOpen, onClose }: ContentBlockEdi
   
   const deleteBlock = (id: string) => {
     setBlocks(blocks.filter(b => b.id !== id));
+  };
+  
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+  
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const newBlocks = [...blocks];
+    const [draggedBlock] = newBlocks.splice(draggedIndex, 1);
+    newBlocks.splice(index, 0, draggedBlock);
+    setBlocks(newBlocks);
+    setDraggedIndex(index);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
   
   const handleSave = () => {
@@ -250,11 +270,21 @@ export function ContentBlockEditor({ project, isOpen, onClose }: ContentBlockEdi
         {/* Block list */}
         <div className="space-y-4">
           {blocks.map((block, index) => (
-            <div key={block.id} className={`${lightMode ? 'bg-gray-100' : 'bg-gray-800'} rounded-lg p-4`}>
+            <div 
+              key={block.id} 
+              draggable
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`${lightMode ? 'bg-gray-100' : 'bg-gray-800'} rounded-lg p-4 ${draggedIndex === index ? 'opacity-50' : ''} transition-opacity cursor-move`}
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className={`text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'} capitalize`}>
-                  {block.type} Block
-                </span>
+                <div className="flex items-center gap-2">
+                  <GripVertical size={16} className={`${lightMode ? 'text-gray-400' : 'text-gray-500'} flex-shrink-0`} />
+                  <span className={`text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'} capitalize`}>
+                    {block.type} Block
+                  </span>
+                </div>
                 <button
                   onClick={() => deleteBlock(block.id)}
                   className="p-1 text-red-500 hover:text-red-400"

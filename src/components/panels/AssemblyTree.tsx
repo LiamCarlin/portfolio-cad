@@ -114,6 +114,13 @@ function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
   
   const isSelected = selectedProjectId === project.id;
   const isExpanded = expanded.has(project.id);
+  
+  // Auto-expand when this project is selected
+  React.useEffect(() => {
+    if (isSelected && !isExpanded) {
+      toggleExpanded(project.id);
+    }
+  }, [isSelected, isExpanded, project.id, toggleExpanded]);
   const CategoryIcon = categoryIcons[project.category];
   const lightMode = theme === 'light';
   const hasContentBlocks = project.contentBlocks && project.contentBlocks.length > 0;
@@ -287,7 +294,7 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
       {/* Header */}
       <div className={`p-3 border-b ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}>
         <div className="flex items-center justify-between mb-3">
-          <h2 className={`text-sm font-semibold ${lightMode ? 'text-gray-900' : 'text-white'}`}>Assembly Tree</h2>
+          <h2 className={`text-sm font-semibold ${lightMode ? 'text-gray-900' : 'text-white'}`}>Projects</h2>
           <button
             onClick={() => togglePanel('left')}
             className={`p-1 rounded transition-colors ${lightMode ? 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}

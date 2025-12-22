@@ -3,16 +3,16 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import TopBar from '@/components/layout/TopBar';
-import Toolbar from '@/components/layout/Toolbar';
 import AssemblyTree from '@/components/panels/AssemblyTree';
 import Inspector from '@/components/panels/Inspector';
 import Timeline from '@/components/panels/Timeline';
 import CommandPalette from '@/components/layout/CommandPalette';
 import TutorialOverlay from '@/components/overlays/TutorialOverlay';
 import WelcomeModal, { useWelcomeModal } from '@/components/overlays/WelcomeModal';
+import HomePage from '@/components/HomePage';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useProjectsLoader } from '@/hooks/useProjectsLoader';
-import { HelpCircle, Loader2 } from 'lucide-react';
+import { HelpCircle, Loader2, Home } from 'lucide-react';
 
 // Dynamic import for Viewport to avoid SSR issues with Three.js
 const Viewport = dynamic(() => import('@/components/viewport/Viewport'), {
@@ -62,13 +62,19 @@ function ResizeHandle({
   return (
     <div
       className={`
-        ${direction === 'horizontal' ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'}
-        ${theme === 'light' ? 'bg-gray-200 hover:bg-blue-400' : 'bg-gray-700 hover:bg-blue-500'}
-        ${isDragging ? (theme === 'light' ? 'bg-blue-400' : 'bg-blue-500') : ''}
-        transition-colors flex-shrink-0
+        ${direction === 'horizontal' ? 'w-1 cursor-col-resize hover:w-1.5' : 'h-1 cursor-row-resize hover:h-1.5'}
+        ${theme === 'light' ? 'bg-gray-300 hover:bg-blue-500' : 'bg-gray-700 hover:bg-blue-500'}
+        ${isDragging ? (theme === 'light' ? 'bg-blue-500' : 'bg-blue-500') : ''}
+        transition-all flex-shrink-0 relative
       `}
       onMouseDown={handleMouseDown}
-    />
+    >
+      {/* Visual indicator when hovering */}
+      <div className={`
+        absolute inset-0 
+        ${direction === 'horizontal' ? 'w-4 -mx-1.5' : 'h-4 -my-1.5'}
+      `} />
+    </div>
   );
 }
 
@@ -81,9 +87,12 @@ export default function CADLayout() {
     rightPanelWidth,
     bottomPanelHeight,
     theme,
+    showHome,
     setTheme,
     setPanelWidth,
     setPanelHeight,
+    setShowHome,
+    selectProject,
   } = usePortfolioStore();
   
   const { showWelcome, closeWelcome, openWelcome } = useWelcomeModal();
@@ -97,18 +106,35 @@ export default function CADLayout() {
     document.documentElement.classList.add(initialTheme);
   }, [setTheme]);
 
+  // Resize handlers - use refs to avoid stale closure issues
+  const leftPanelWidthRef = useRef(leftPanelWidth);
+  const rightPanelWidthRef = useRef(rightPanelWidth);
+  const bottomPanelHeightRef = useRef(bottomPanelHeight);
+  
+  useEffect(() => {
+    leftPanelWidthRef.current = leftPanelWidth;
+  }, [leftPanelWidth]);
+  
+  useEffect(() => {
+    rightPanelWidthRef.current = rightPanelWidth;
+  }, [rightPanelWidth]);
+  
+  useEffect(() => {
+    bottomPanelHeightRef.current = bottomPanelHeight;
+  }, [bottomPanelHeight]);
+
   // Resize handlers
   const handleLeftResize = useCallback((delta: number) => {
-    setPanelWidth('left', leftPanelWidth + delta);
-  }, [leftPanelWidth, setPanelWidth]);
+    setPanelWidth('left', leftPanelWidthRef.current + delta);
+  }, [setPanelWidth]);
 
   const handleRightResize = useCallback((delta: number) => {
-    setPanelWidth('right', rightPanelWidth - delta);
-  }, [rightPanelWidth, setPanelWidth]);
+    setPanelWidth('right', rightPanelWidthRef.current - delta);
+  }, [setPanelWidth]);
 
   const handleBottomResize = useCallback((delta: number) => {
-    setPanelHeight('bottom', bottomPanelHeight - delta);
-  }, [bottomPanelHeight, setPanelHeight]);
+    setPanelHeight('bottom', bottomPanelHeightRef.current - delta);
+  }, [setPanelHeight]);
   
   // Show loading state
   if (isLoading) {
@@ -116,8 +142,27 @@ export default function CADLayout() {
       <div className="h-screen w-screen flex items-center justify-center bg-gray-950 dark:bg-gray-950 light:bg-gray-100">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <span className="text-gray-400 dark:text-gray-400 light:text-gray-600">Loading PortfolioCAD...</span>
+          <span className="text-gray-400 dark:text-gray-400 light:text-gray-600">Loading Portfolio...</span>
         </div>
+      </div>
+    );
+  }
+  
+  // Handler for selecting a project from home page
+  const handleSelectProject = (projectId: string) => {
+    selectProject(projectId);
+    setShowHome(false);
+  };
+  
+  // Show home page
+  if (showHome) {
+    return (
+      <div className={`h-screen w-screen overflow-auto transition-colors duration-200 ${
+        theme === 'light' 
+          ? 'bg-gray-100 text-gray-900' 
+          : 'bg-gray-950 text-white'
+      }`}>
+        <HomePage onSelectProject={handleSelectProject} />
       </div>
     );
   }
@@ -144,26 +189,15 @@ export default function CADLayout() {
           <ResizeHandle direction="horizontal" onResize={handleLeftResize} theme={theme} />
         )}
         
-        {/* Center - Viewport and toolbar */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* Toolbar */}
-          <Toolbar className="flex-shrink-0" />
-          
+        {/* Center - Viewport */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Viewport + Bottom panel container */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Viewport */}
             <Viewport className="flex-1 relative min-h-0" />
             
-            {/* Bottom resize handle */}
-            {!bottomPanelCollapsed && (
-              <ResizeHandle direction="vertical" onResize={handleBottomResize} theme={theme} />
-            )}
-            
-            {/* Bottom panel - Timeline */}
-            <Timeline
-              className="flex-shrink-0"
-              style={{ height: bottomPanelCollapsed ? 'auto' : `${bottomPanelHeight}px` }}
-            />
+            {/* Bottom panel - Timeline (fixed height, no resize) */}
+            <Timeline className="relative z-10" />
           </div>
         </div>
         
@@ -186,9 +220,7 @@ export default function CADLayout() {
           : 'bg-gray-900 border-gray-700 text-gray-500'
       }`}>
         <div className="flex items-center gap-4">
-          <span>PortfolioCAD v1.0</span>
-          <span>•</span>
-          <span>Liam Carlin</span>
+          <span>Liam Carlin's Portfolio</span>
         </div>
         <div className="flex items-center gap-4">
           <button

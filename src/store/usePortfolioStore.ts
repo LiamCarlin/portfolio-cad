@@ -259,6 +259,9 @@ interface PortfolioState {
   // Command palette
   commandPaletteOpen: boolean;
   
+  // Home page
+  showHome: boolean;
+  
   // Actions
   setProjects: (projects: Project[]) => void;
   selectProject: (projectId: string | null) => void;
@@ -294,6 +297,9 @@ interface PortfolioState {
   
   toggleTheme: () => void;
   setTheme: (theme: ThemeMode) => void;
+  
+  // Home page
+  setShowHome: (show: boolean) => void;
   
   // Admin/Edit mode actions
   setAuthenticated: (authenticated: boolean) => void;
@@ -365,13 +371,16 @@ export const usePortfolioStore = create<PortfolioState>()(
     bottomPanelCollapsed: false,
     // Min/max bounds for resizing - expanded for better content viewing
     leftPanelMinWidth: 200,
-    leftPanelMaxWidth: 600,
+    leftPanelMaxWidth: 1200,
     rightPanelMinWidth: 300,
-    rightPanelMaxWidth: 900,
+    rightPanelMaxWidth: 1400,
     bottomPanelMinHeight: 100,
-    bottomPanelMaxHeight: 600,
+    bottomPanelMaxHeight: 800,
     
     commandPaletteOpen: false,
+    
+    // Home page - show home by default
+    showHome: true,
     
     // Actions
     setProjects: (projects) => set({ projects }),
@@ -549,7 +558,10 @@ export const usePortfolioStore = create<PortfolioState>()(
     },
     
     setPanelHeight: (panel, height) => {
-      if (panel === 'bottom') set({ bottomPanelHeight: Math.max(100, Math.min(300, height)) });
+      const state = get();
+      if (panel === 'bottom') {
+        set({ bottomPanelHeight: Math.max(state.bottomPanelMinHeight, Math.min(state.bottomPanelMaxHeight, height)) });
+      }
     },
     
     togglePanel: (panel) => {
@@ -653,6 +665,8 @@ export const usePortfolioStore = create<PortfolioState>()(
         localStorage.setItem('portfoliocad-theme', theme);
       }
     },
+    
+    setShowHome: (show) => set({ showHome: show }),
     
     setConfiguration: (projectId, configId) => {
       const { projects } = get();
