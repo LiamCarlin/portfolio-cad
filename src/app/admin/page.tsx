@@ -236,33 +236,59 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Load projects from localStorage on mount, merge with sample projects
+  // Load projects and welcome data: prefer saved siteData.json, then localStorage, then samples
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    // Start with sample projects
-    let allProjects: Project[] = [...sampleProjects];
-    
-    const saved = localStorage.getItem('portfoliocad-projects');
-    if (saved) {
+    let cancelled = false;
+
+    (async () => {
+      let allProjects: Project[] = [...sampleProjects];
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      let loadedFromFile = false;
+
+      // 1) Try to load from generated siteData.json (latest saved/exported data)
       try {
-        const savedProjects: Project[] = JSON.parse(saved);
-        if (Array.isArray(savedProjects) && savedProjects.length > 0) {
-          // Merge: use saved versions of projects, add any sample projects not in saved
-          const savedIds = new Set(savedProjects.map(p => p.id));
-          const newSampleProjects = sampleProjects.filter(sp => !savedIds.has(sp.id));
-          allProjects = [...savedProjects, ...newSampleProjects];
+        const res = await fetch(`${basePath}/data/siteData.json`, { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json.projects) && json.projects.length > 0) {
+            allProjects = json.projects;
+            loadedFromFile = true;
+          }
+          if (json.welcomePageData) {
+            updateWelcomePageData(json.welcomePageData);
+          }
         }
       } catch (e) {
-        console.error('Failed to load projects:', e);
+        console.warn('Could not load site data file in admin:', e);
       }
-    }
-    
-    setProjects(allProjects);
-    if (allProjects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(allProjects[0].id);
-    }
-  }, [isAuthenticated]);
+
+      // 2) If no file data, fall back to any local edits from localStorage (draft mode)
+      if (!loadedFromFile) {
+        const saved = localStorage.getItem('portfoliocad-projects');
+        if (saved) {
+          try {
+            const savedProjects: Project[] = JSON.parse(saved);
+            if (Array.isArray(savedProjects) && savedProjects.length > 0) {
+              const savedIds = new Set(savedProjects.map(p => p.id));
+              const newSampleProjects = sampleProjects.filter(sp => !savedIds.has(sp.id));
+              allProjects = [...savedProjects, ...newSampleProjects];
+            }
+          } catch (e) {
+            console.error('Failed to load projects from localStorage:', e);
+          }
+        }
+      }
+
+      if (cancelled) return;
+      setProjects(allProjects);
+      if (allProjects.length > 0 && !selectedProjectId) {
+        setSelectedProjectId(allProjects[0].id);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isAuthenticated, updateWelcomePageData]);
 
   // Auto-save to localStorage
   useEffect(() => {

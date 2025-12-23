@@ -1098,7 +1098,7 @@
     "name": "Liam Carlin",
     "title": "Mechanical Engineering Student",
     "school": "Olin College of Engineering",
-    "bio": "Passionate about robotics, mechanical design, and building things that move. I love tackling complex engineering challenges and turning ideas into reality through CAD, prototyping, and iteration.",
+    "bio": "I am passionate about robotics, mechanical design, and building things that move. I love tackling complex engineering challenges and turning ideas into reality through CAD, prototyping, experimenting, and iteration.",
     "socialLinks": [
       {
         "id": "1",
@@ -1119,9 +1119,11 @@
         "label": "GitHub"
       }
     ],
-    "bannerDarkness": 30,
+    "bannerDarkness": 60,
     "aboutTitle": "About This Portfolio",
-    "aboutContent": "I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment."
+    "aboutContent": "I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment.",
+    "bannerImageId": "banner-1766476455151",
+    "bannerImageUrl": "uploads/welcome-banner.jpg"
   },
-  "savedAt": "2025-12-23T07:43:40.528Z"
+  "savedAt": "2025-12-23T07:54:49.655Z"
 }
