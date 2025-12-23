@@ -20,6 +20,7 @@ import {
   Lock,
   Image,
   Type,
+  Save,
   List,
   Link2,
   Quote,
@@ -220,7 +221,7 @@ export default function AdminPage() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [viewMode, setViewMode] = useState<'welcome' | 'projects'>('projects');
-  const { theme } = usePortfolioStore();
+  const { theme, welcomePageData } = usePortfolioStore();
   const lightMode = theme === 'light';
 
   // Check for existing auth on mount
@@ -314,6 +315,26 @@ export default function AdminPage() {
       if (selectedProjectId === id) {
         setSelectedProjectId(null);
       }
+      setSaveStatus('unsaved');
+    }
+  };
+
+  const saveToFiles = async () => {
+    setSaveStatus('saving');
+    try {
+      const res = await fetch('/api/save-site', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projects, welcomePageData }),
+      });
+      if (!res.ok) {
+        throw new Error('Save failed');
+      }
+      showNotification('success', 'Saved to data files. Commit & push to publish.');
+      setSaveStatus('saved');
+    } catch (err) {
+      console.error('Save failed', err);
+      showNotification('error', 'Save to files failed');
       setSaveStatus('unsaved');
     }
   };
@@ -438,6 +459,13 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
             >
               <FileJson size={18} />
               Export as Code
+            </button>
+            <button
+              onClick={saveToFiles}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg transition-colors text-white"
+            >
+              <Save size={18} />
+              Save to Files
             </button>
           </div>
         </div>
