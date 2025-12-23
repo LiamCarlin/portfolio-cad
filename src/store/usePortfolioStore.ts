@@ -787,16 +787,15 @@ export const usePortfolioStore = create<PortfolioState>()(
           theme: persisted.theme ?? current.theme,
         } as PortfolioState;
       },
-      migrate: (persisted, version) => {
+      migrate: (persisted: unknown, version: number): any => {
         // Version 4: Stop persisting welcomePageData - comes from files only
         if (version < 4) {
           const state = persisted as any;
           return {
             theme: state?.theme ?? 'dark',
-          } as Partial<PortfolioState>;
+          };
         }
-        
-        return persisted as PortfolioState;
+        return persisted;
       },
     }
   )
