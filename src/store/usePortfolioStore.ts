@@ -773,10 +773,9 @@ export const usePortfolioStore = create<PortfolioState>()(
     }),
     {
       name: 'portfoliocad-store',
-      version: 3,
+      version: 4,
       partialize: (state) => ({
-        // Only persist theme + welcome page settings to avoid bloating storage
-        welcomePageData: state.welcomePageData,
+        // Only persist theme - welcomePageData and projects come from files
         theme: state.theme,
       }),
       merge: (persistedState, currentState) => {
@@ -785,29 +784,16 @@ export const usePortfolioStore = create<PortfolioState>()(
         if (!persisted) return current;
         return {
           ...current,
-          ...persisted,
-          welcomePageData: {
-            ...current.welcomePageData,
-            ...(persisted.welcomePageData ?? {}),
-          },
+          theme: persisted.theme ?? current.theme,
         } as PortfolioState;
       },
       migrate: (persisted, version) => {
-        // Version 1->2: Previously added bannerOverlayOpacity (now removed)
-        // Version 2->3: Migrate from bannerImage to bannerImageId
-        // Old data had base64 image in bannerImage field - we can't migrate that to IndexedDB
-        // from here, so we just clear it and let users re-upload if needed
-        if (version < 3) {
+        // Version 4: Stop persisting welcomePageData - comes from files only
+        if (version < 4) {
           const state = persisted as any;
           return {
-            ...state,
-            welcomePageData: {
-              ...state?.welcomePageData,
-              // Remove old bannerImage field if it exists
-              bannerImage: undefined,
-              bannerImageId: undefined, // Fresh start for banner
-            },
-          } as PortfolioState;
+            theme: state?.theme ?? 'dark',
+          } as Partial<PortfolioState>;
         }
         
         return persisted as PortfolioState;
