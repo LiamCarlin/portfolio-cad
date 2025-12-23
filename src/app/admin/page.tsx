@@ -225,6 +225,9 @@ export default function AdminPage() {
   const { theme, welcomePageData } = usePortfolioStore();
   const lightMode = theme === 'light';
 
+  // Get updateWelcomePageData from store for reloading after save
+  const updateWelcomePageData = usePortfolioStore((state) => state.updateWelcomePageData);
+
   // Check for existing auth on mount
   useEffect(() => {
     const auth = sessionStorage.getItem('admin-auth');
@@ -342,6 +345,25 @@ export default function AdminPage() {
         throw new Error('Save failed');
       }
       showNotification('success', 'Saved to data files. Commit & push to publish.');
+
+      // Reload data from the server to reflect saved changes immediately
+      setTimeout(async () => {
+        try {
+          const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+          const dataRes = await fetch(`${basePath}/data/siteData.json`, { cache: 'no-store' });
+          if (dataRes.ok) {
+            const json = await dataRes.json();
+            if (json.projects && Array.isArray(json.projects)) {
+              setProjects(json.projects);
+            }
+            if (json.welcomePageData) {
+              updateWelcomePageData(json.welcomePageData);
+            }
+          }
+        } catch (e) {
+          console.warn('Could not reload data after save:', e);
+        }
+      }, 100);
       setSaveStatus('saved');
     } catch (err) {
       console.error('Save failed', err);

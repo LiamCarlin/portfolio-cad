@@ -381,7 +381,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       explodeAmount: 0,
       showLabels: true,
       
-      theme: 'dark',
+      theme: 'light',
       
       // Admin/Edit mode
       isAuthenticated: false,

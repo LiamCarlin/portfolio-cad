@@ -104,14 +104,9 @@ export default function CADLayout() {
     
     let initialTheme = savedTheme;
     
-    // If no saved theme, check system preference
+     // If no saved theme, default to light mode
     if (!initialTheme) {
-      if (typeof window !== 'undefined' && window.matchMedia) {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        initialTheme = prefersDark ? 'dark' : 'light';
-      } else {
-        initialTheme = 'light'; // Fallback to light
-      }
+       initialTheme = 'light';
     }
     
     setTheme(initialTheme);
