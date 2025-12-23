@@ -41,10 +41,11 @@ function PartMesh({ subsystem, explodeAmount, depth = 0 }: PartMeshProps) {
   
   // Calculate exploded position
   const explodedPosition = useMemo(() => {
+    const explodeVector = subsystem.explodeVector ?? [0, 0, 0];
     return [
-      subsystem.position[0] + subsystem.explodeVector[0] * explodeAmount,
-      subsystem.position[1] + subsystem.explodeVector[1] * explodeAmount,
-      subsystem.position[2] + subsystem.explodeVector[2] * explodeAmount,
+      subsystem.position[0] + explodeVector[0] * explodeAmount,
+      subsystem.position[1] + explodeVector[1] * explodeAmount,
+      subsystem.position[2] + explodeVector[2] * explodeAmount,
     ] as [number, number, number];
   }, [subsystem.position, subsystem.explodeVector, explodeAmount]);
   

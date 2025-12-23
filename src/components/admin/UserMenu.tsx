@@ -133,8 +133,8 @@ export function UserMenu() {
                   }}
                   className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 ${
                     lightMode 
-                      ? 'hover:bg-gray-100 text-gray-700' 
-                      : 'hover:bg-gray-700 text-gray-200'
+                      ? 'hover:bg-gray-100 text-gray-700 border-b border-gray-200' 
+                      : 'hover:bg-gray-700 text-gray-200 border-b border-gray-600'
                   }`}
                 >
                   <Edit2 size={16} className={editMode ? 'text-green-500' : ''} />

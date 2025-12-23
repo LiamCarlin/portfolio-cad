@@ -288,7 +288,7 @@ function Marker3D({
         <ShapeGeometry 
           shape={annotation.shape || 'sphere'} 
           dimensions={annotation.dimensions}
-          fallbackSize={annotation.size} 
+          fallbackSize={annotation.size ?? 0.1} 
         />
         <meshStandardMaterial 
           color={annotation.color}
@@ -314,7 +314,7 @@ function Marker3D({
         <Html
           position={[
             localPosition[0],
-            localPosition[1] + (annotation.dimensions?.height || annotation.size * 2) + 0.02,
+            localPosition[1] + (annotation.dimensions?.height || (annotation.size ?? 0.1) * 2) + 0.02,
             localPosition[2]
           ]}
           center
@@ -333,7 +333,7 @@ function Marker3D({
       {isSelected && (
         <Html
           position={[
-            localPosition[0] + (annotation.dimensions?.width || annotation.size) + 0.03,
+            localPosition[0] + (annotation.dimensions?.width || (annotation.size ?? 0.1)) + 0.03,
             localPosition[1],
             localPosition[2]
           ]}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { subscribeWithSelector, persist } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 
 // Types for the portfolio data model
 export interface Artifact {
@@ -58,6 +58,27 @@ export interface TaggedPart {
   meshName?: string;
 }
 
+// Subsystem in a project assembly
+export interface Subsystem {
+  id: string;
+  name: string;
+  description: string;
+  role: string;
+  tools: string[];
+  outcomes: string[];
+  // 3D position in assembly
+  position: [number, number, number];
+  // Optional exploded view offset and color styling
+  explodeVector?: [number, number, number];
+  color?: string;
+  // Optional artifacts associated with the subsystem
+  artifacts?: Artifact[];
+  // Optional annotations attached to subsystem
+  cadAnnotations?: CADAnnotation[];
+  // Child subsystems
+  children?: Subsystem[];
+}
+
 // Uploaded 3D model
 export interface CADModel {
   id: string;
@@ -114,29 +135,11 @@ export interface CADAnnotation {
   meshName?: string;
   // Shape of the marker
   shape: AnnotationShape;
-  // Style
-  color: string;
-  // Legacy single size (for backward compatibility)
-  size: number;
-  // Specific dimensions for the shape
+  // Optional dimensions or size for rendering
   dimensions?: AnnotationDimensions;
-  // Optional label
+  size?: number;
+  color?: string;
   label?: string;
-}
-
-export interface Subsystem {
-  id: string;
-  name: string;
-  description: string;
-  role: string;
-  tools: string[];
-  outcomes: string[];
-  artifacts: Artifact[];
-  position: [number, number, number];
-  explodeVector: [number, number, number];
-  color: string;
-  children?: Subsystem[];
-  // CAD annotations - regions marked on the 3D model for this subsystem
   cadAnnotations?: CADAnnotation[];
 }
 
@@ -204,9 +207,37 @@ interface TutorialStep {
   completed: boolean;
 }
 
+export interface SocialLink {
+  id: string;
+  platform: 'github' | 'linkedin' | 'email' | 'twitter' | 'discord' | 'instagram' | 'youtube' | 'website' | 'phone';
+  url: string;
+  label?: string;
+  icon?: string; // Base64 or blob URL for custom icon image
+}
+
+export interface WelcomePageData {
+  // Personal info
+  name: string;
+  title: string;
+  school: string;
+  bio: string;
+  
+  // Social links
+  socialLinks: SocialLink[];
+  
+  // Banner
+  bannerImageId?: string; // ID reference to image stored in IndexedDB (not base64 to avoid localStorage quota)
+  bannerDarkness: number; // 0-100, percentage of darkness overlay on banner image
+  
+  // About section
+  aboutTitle: string;
+  aboutContent: string;
+}
+
 interface PortfolioState {
   // Data
   projects: Project[];
+  welcomePageData: WelcomePageData;
   
   // Selection
   selectedProjectId: string | null;
@@ -313,6 +344,10 @@ interface PortfolioState {
   addTaggedPart: (projectId: string, part: TaggedPart) => void;
   updateTaggedPart: (projectId: string, partId: string, updates: Partial<TaggedPart>) => void;
   removeTaggedPart: (projectId: string, partId: string) => void;
+  
+  // Welcome page actions
+  updateWelcomePageData: (updates: Partial<WelcomePageData>) => void;
+  setBannerImageId: (imageId: string | undefined) => void;
 }
 
 // Helper to find subsystem in nested structure
@@ -328,377 +363,455 @@ const findSubsystemById = (subsystems: Subsystem[], id: string): Subsystem | nul
 };
 
 export const usePortfolioStore = create<PortfolioState>()(
-  subscribeWithSelector((set, get) => ({
-    // Initial state
-    projects: [],
-    
-    selectedProjectId: null,
-    selectedSubsystemIds: [],
-    selectedTaggedPartId: null,
-    hoveredSubsystemId: null,
-    hoveredTaggedPartId: null,
-    showProjectOverview: false, // Default to CAD view (3D Model tab)
-    
-    viewMode: 'assembly',
-    toolMode: 'select',
-    explodeAmount: 0,
-    showLabels: true,
-    
-    theme: 'dark',
-    
-    // Admin/Edit mode
-    isAuthenticated: false,
-    editMode: false,
-    
-    cameraState: {
-      position: [5, 5, 5],
-      target: [0, 0, 0],
-    },
-    
-    searchQuery: '',
-    categoryFilter: null,
-    
-    tutorialActive: false,
-    tutorialSteps: [],
-    currentTutorialStep: 0,
-    
-    // Panel sizes - larger defaults for more content
-    leftPanelWidth: 300,
-    rightPanelWidth: 400,
-    bottomPanelHeight: 180,
-    leftPanelCollapsed: false,
-    rightPanelCollapsed: false,
-    bottomPanelCollapsed: false,
-    // Min/max bounds for resizing - expanded for better content viewing
-    leftPanelMinWidth: 200,
-    leftPanelMaxWidth: 1200,
-    rightPanelMinWidth: 300,
-    rightPanelMaxWidth: 1400,
-    bottomPanelMinHeight: 100,
-    bottomPanelMaxHeight: 800,
-    
-    commandPaletteOpen: false,
-    
-    // Home page - show home by default
-    showHome: true,
-    
-    // Actions
-    setProjects: (projects) => set({ projects }),
-    
-    selectProject: (projectId) => {
-      const { rightPanelCollapsed, rightPanelWidth, rightPanelMinWidth } = get();
-      // Auto-expand right panel when selecting a project
-      set({
-        selectedProjectId: projectId,
-        selectedSubsystemIds: [],
-        selectedTaggedPartId: null,
-        showProjectOverview: false, // Default to CAD view (3D Model tab)
-        explodeAmount: 0,
-        // Expand right panel if collapsed, or ensure minimum width
-        rightPanelCollapsed: false,
-        rightPanelWidth: projectId ? Math.max(rightPanelWidth, 400) : rightPanelWidth,
-      });
-    },
-    
-    selectSubsystem: (subsystemId, multiSelect = false) => {
-      const { selectedSubsystemIds } = get();
+  persist(
+    (set, get) => ({
+      // Initial state
+      projects: [],
       
-      if (multiSelect) {
-        const isSelected = selectedSubsystemIds.includes(subsystemId);
+      selectedProjectId: null,
+      selectedSubsystemIds: [],
+      selectedTaggedPartId: null,
+      hoveredSubsystemId: null,
+      hoveredTaggedPartId: null,
+      showProjectOverview: false, // Default to CAD view (3D Model tab)
+      
+      viewMode: 'assembly',
+      toolMode: 'select',
+      explodeAmount: 0,
+      showLabels: true,
+      
+      theme: 'dark',
+      
+      // Admin/Edit mode
+      isAuthenticated: false,
+      editMode: false,
+      
+      cameraState: {
+        position: [5, 5, 5],
+        target: [0, 0, 0],
+      },
+      
+      searchQuery: '',
+      categoryFilter: null,
+      
+      tutorialActive: false,
+      tutorialSteps: [],
+      currentTutorialStep: 0,
+      
+      // Panel sizes - larger defaults for more content
+      leftPanelWidth: 300,
+      rightPanelWidth: 400,
+      bottomPanelHeight: 180,
+      leftPanelCollapsed: false,
+      rightPanelCollapsed: false,
+      bottomPanelCollapsed: false,
+      // Min/max bounds for resizing - expanded for better content viewing
+      leftPanelMinWidth: 200,
+      leftPanelMaxWidth: 1200,
+      rightPanelMinWidth: 300,
+      rightPanelMaxWidth: 1400,
+      bottomPanelMinHeight: 100,
+      bottomPanelMaxHeight: 800,
+      
+      commandPaletteOpen: false,
+      
+      // Welcome page data
+      welcomePageData: {
+        name: 'Liam Carlin',
+        title: 'Mechanical Engineering Student',
+        school: 'Olin College of Engineering',
+        bio: 'Passionate about robotics, mechanical design, and building things that move. I love tackling complex engineering challenges and turning ideas into reality through CAD, prototyping, and iteration.',
+        socialLinks: [
+          { id: '1', platform: 'email', url: 'lcarlin@olin.edu', label: 'Email' },
+          { id: '2', platform: 'linkedin', url: 'https://linkedin.com/in/liamzcarlin', label: 'LinkedIn' },
+          { id: '3', platform: 'github', url: 'https://github.com/liamcarlin', label: 'GitHub' },
+        ],
+        bannerDarkness: 30, // Default 30% darkness for better text readability
+        aboutTitle: 'About This Portfolio',
+        aboutContent: 'I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment.',
+      },
+      
+      // Home page - show home by default
+      showHome: true,
+      
+      // Actions
+      setProjects: (projects) => set({ projects }),
+      
+      selectProject: (projectId) => {
+        const { rightPanelWidth } = get();
+        // Auto-expand right panel when selecting a project
         set({
-          selectedSubsystemIds: isSelected
-            ? selectedSubsystemIds.filter(id => id !== subsystemId)
-            : [...selectedSubsystemIds, subsystemId],
-          showProjectOverview: false, // Hide overview when selecting subsystem
+          selectedProjectId: projectId,
+          selectedSubsystemIds: [],
+          selectedTaggedPartId: null,
+          showProjectOverview: false, // Default to CAD view (3D Model tab)
+          explodeAmount: 0,
+          // Expand right panel if collapsed, or ensure minimum width
+          rightPanelCollapsed: false,
+          rightPanelWidth: projectId ? Math.max(rightPanelWidth, 400) : rightPanelWidth,
         });
-      } else {
-        set({ selectedSubsystemIds: [subsystemId], showProjectOverview: false });
-      }
-    },
-    
-    selectTaggedPart: (partId) => {
-      set({ selectedTaggedPartId: partId, selectedSubsystemIds: [] });
-    },
-    
-    clearSelection: () => set({ selectedSubsystemIds: [], selectedTaggedPartId: null }),
-    
-    setHoveredSubsystem: (subsystemId) => set({ hoveredSubsystemId: subsystemId }),
-    
-    setHoveredTaggedPart: (partId) => set({ hoveredTaggedPartId: partId }),
-    
-    setShowProjectOverview: (show) => set({ showProjectOverview: show, selectedSubsystemIds: show ? [] : get().selectedSubsystemIds }),
-    
-    setViewMode: (mode) => set({ viewMode: mode }),
-    
-    setToolMode: (mode) => set({ toolMode: mode }),
-    
-    setExplodeAmount: (amount) => set({ explodeAmount: Math.max(0, Math.min(1, amount)) }),
-    
-    toggleLabels: () => set((state) => ({ showLabels: !state.showLabels })),
-    
-    setCameraState: (state) => set((prev) => ({
-      cameraState: { ...prev.cameraState, ...state },
-    })),
-    
-    focusOnSelection: () => {
-      const { selectedSubsystemIds, selectedTaggedPartId, selectedProjectId, projects } = get();
-      if (!selectedProjectId) return;
+      },
       
-      const project = projects.find(p => p.id === selectedProjectId);
-      if (!project) return;
-      
-      // Focus on tagged part
-      if (selectedTaggedPartId && project.cadModel) {
-        const part = project.cadModel.taggedParts.find(p => p.id === selectedTaggedPartId);
-        if (part) {
-          const [x, y, z] = part.position;
+      selectSubsystem: (subsystemId, multiSelect = false) => {
+        const { selectedSubsystemIds } = get();
+        
+        if (multiSelect) {
+          const isSelected = selectedSubsystemIds.includes(subsystemId);
           set({
-            cameraState: {
-              position: [x + 2, y + 2, z + 2],
-              target: [x, y, z],
-            },
+            selectedSubsystemIds: isSelected
+              ? selectedSubsystemIds.filter(id => id !== subsystemId)
+              : [...selectedSubsystemIds, subsystemId],
+            showProjectOverview: false, // Hide overview when selecting subsystem
           });
-          return;
+        } else {
+          set({ selectedSubsystemIds: [subsystemId], showProjectOverview: false });
         }
-      }
+      },
       
-      if (selectedSubsystemIds.length === 1) {
-        const subsystem = findSubsystemById(project.subsystems, selectedSubsystemIds[0]);
-        if (subsystem) {
-          const [x, y, z] = subsystem.position;
-          set({
-            cameraState: {
-              position: [x + 3, y + 3, z + 3],
-              target: [x, y, z],
+      selectTaggedPart: (partId) => {
+        set({ selectedTaggedPartId: partId, selectedSubsystemIds: [] });
+      },
+      
+      clearSelection: () => set({ selectedSubsystemIds: [], selectedTaggedPartId: null }),
+      
+      setHoveredSubsystem: (subsystemId) => set({ hoveredSubsystemId: subsystemId }),
+      
+      setHoveredTaggedPart: (partId) => set({ hoveredTaggedPartId: partId }),
+      
+      setShowProjectOverview: (show) => set({ showProjectOverview: show, selectedSubsystemIds: show ? [] : get().selectedSubsystemIds }),
+      
+      setViewMode: (mode) => set({ viewMode: mode }),
+      
+      setToolMode: (mode) => set({ toolMode: mode }),
+      
+      setExplodeAmount: (amount) => set({ explodeAmount: Math.max(0, Math.min(1, amount)) }),
+      
+      toggleLabels: () => set((state) => ({ showLabels: !state.showLabels })),
+      
+      setCameraState: (state) => set((prev) => ({
+        cameraState: { ...prev.cameraState, ...state },
+      })),
+      
+      focusOnSelection: () => {
+        const { selectedSubsystemIds, selectedTaggedPartId, selectedProjectId, projects } = get();
+        if (!selectedProjectId) return;
+        
+        const project = projects.find(p => p.id === selectedProjectId);
+        if (!project) return;
+        
+        // Focus on tagged part
+        if (selectedTaggedPartId && project.cadModel) {
+          const part = project.cadModel.taggedParts.find(p => p.id === selectedTaggedPartId);
+          if (part) {
+            const [x, y, z] = part.position;
+            set({
+              cameraState: {
+                position: [x + 2, y + 2, z + 2],
+                target: [x, y, z],
+              },
+            });
+            return;
+          }
+        }
+        
+        if (selectedSubsystemIds.length === 1) {
+          const subsystem = findSubsystemById(project.subsystems, selectedSubsystemIds[0]);
+          if (subsystem) {
+            const [x, y, z] = subsystem.position;
+            set({
+              cameraState: {
+                position: [x + 3, y + 3, z + 3],
+                target: [x, y, z],
+              },
+            });
+          }
+        }
+      },
+      
+      setSearchQuery: (query) => set({ searchQuery: query }),
+      
+      setCategoryFilter: (category) => set({ categoryFilter: category }),
+      
+      startTutorial: () => {
+        const { selectedProjectId, projects } = get();
+        if (!selectedProjectId) return;
+        
+        const project = projects.find(p => p.id === selectedProjectId);
+        if (!project) return;
+        
+        // Generate tutorial steps based on project
+        const steps: TutorialStep[] = [
+          {
+            id: 'intro',
+            instruction: `Welcome to the ${project.name} assembly. Let's explore!`,
+            condition: { type: 'select', value: '' },
+            completed: false,
+          },
+          ...project.subsystems.slice(0, 3).map((sub, i) => ({
+            id: `select-${sub.id}`,
+            instruction: `Select the ${sub.name} subsystem`,
+            condition: { type: 'select' as const, value: sub.id },
+            cameraPosition: [
+              sub.position[0] + 4,
+              sub.position[1] + 3,
+              sub.position[2] + 4,
+            ] as [number, number, number],
+            completed: false,
+          })),
+          {
+            id: 'explode',
+            instruction: 'Use the explode slider to see all components',
+            condition: { type: 'explode', value: '0.5' },
+            completed: false,
+          },
+          {
+            id: 'drawing',
+            instruction: 'Switch to the Drawing tab',
+            condition: { type: 'tab', value: 'drawing' },
+            completed: false,
+          },
+        ];
+        
+        set({
+          tutorialActive: true,
+          tutorialSteps: steps,
+          currentTutorialStep: 0,
+        });
+      },
+      
+      nextTutorialStep: () => {
+        const { currentTutorialStep, tutorialSteps } = get();
+        if (currentTutorialStep < tutorialSteps.length - 1) {
+          set({ currentTutorialStep: currentTutorialStep + 1 });
+        } else {
+          set({ tutorialActive: false, currentTutorialStep: 0 });
+        }
+      },
+      
+      endTutorial: () => set({ tutorialActive: false, currentTutorialStep: 0 }),
+      
+      completeTutorialStep: (stepId) => {
+        const { tutorialSteps } = get();
+        set({
+          tutorialSteps: tutorialSteps.map(step =>
+            step.id === stepId ? { ...step, completed: true } : step
+          ),
+        });
+      },
+      
+      setPanelWidth: (panel, width) => {
+        const state = get();
+        if (panel === 'left') {
+          set({ leftPanelWidth: Math.max(state.leftPanelMinWidth, Math.min(state.leftPanelMaxWidth, width)) });
+        }
+        if (panel === 'right') {
+          set({ rightPanelWidth: Math.max(state.rightPanelMinWidth, Math.min(state.rightPanelMaxWidth, width)) });
+        }
+      },
+      
+      setPanelHeight: (panel, height) => {
+        const state = get();
+        if (panel === 'bottom') {
+          set({ bottomPanelHeight: Math.max(state.bottomPanelMinHeight, Math.min(state.bottomPanelMaxHeight, height)) });
+        }
+      },
+      
+      togglePanel: (panel) => {
+        if (panel === 'left') set((s) => ({ leftPanelCollapsed: !s.leftPanelCollapsed }));
+        if (panel === 'right') set((s) => ({ rightPanelCollapsed: !s.rightPanelCollapsed }));
+        if (panel === 'bottom') set((s) => ({ bottomPanelCollapsed: !s.bottomPanelCollapsed }));
+      },
+      
+      expandRightPanel: () => {
+        const state = get();
+        set({ 
+          rightPanelCollapsed: false, 
+          rightPanelWidth: Math.max(state.rightPanelWidth, 400)
+        });
+      },
+      
+      updateProject: (projectId, updates) => {
+        const { projects } = get();
+        set({
+          projects: projects.map(p =>
+            p.id === projectId ? { ...p, ...updates } : p
+          ),
+        });
+      },
+      
+      addTaggedPart: (projectId, part) => {
+        const { projects } = get();
+        set({
+          projects: projects.map(p => {
+            if (p.id === projectId && p.cadModel) {
+              return {
+                ...p,
+                cadModel: {
+                  ...p.cadModel,
+                  taggedParts: [...(p.cadModel.taggedParts || []), part],
+                },
+              };
+            }
+            return p;
+          }),
+        });
+      },
+      
+      updateTaggedPart: (projectId, partId, updates) => {
+        const { projects } = get();
+        set({
+          projects: projects.map(p => {
+            if (p.id === projectId && p.cadModel) {
+              return {
+                ...p,
+                cadModel: {
+                  ...p.cadModel,
+                  taggedParts: p.cadModel.taggedParts.map(part =>
+                    part.id === partId ? { ...part, ...updates } : part
+                  ),
+                },
+              };
+            }
+            return p;
+          }),
+        });
+      },
+      
+      removeTaggedPart: (projectId, partId) => {
+        const { projects } = get();
+        set({
+          projects: projects.map(p => {
+            if (p.id === projectId && p.cadModel) {
+              return {
+                ...p,
+                cadModel: {
+                  ...p.cadModel,
+                  taggedParts: p.cadModel.taggedParts.filter(part => part.id !== partId),
+                },
+              };
+            }
+            return p;
+          }),
+        });
+      },
+      
+      updateWelcomePageData: (updates) => {
+        set((state) => ({
+          welcomePageData: {
+            ...state.welcomePageData,
+            ...updates,
+          },
+        }));
+      },
+      
+      toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
+      
+      toggleTheme: () => {
+        const { theme } = get();
+        const newTheme = theme === 'dark' ? 'light' : 'dark';
+        set({ theme: newTheme });
+        // Update document class for CSS
+        if (typeof document !== 'undefined') {
+          document.documentElement.classList.remove('dark', 'light');
+          document.documentElement.classList.add(newTheme);
+          localStorage.setItem('portfoliocad-theme', newTheme);
+        }
+      },
+      
+      setTheme: (theme) => {
+        set({ theme });
+        if (typeof document !== 'undefined') {
+          document.documentElement.classList.remove('dark', 'light');
+          document.documentElement.classList.add(theme);
+          localStorage.setItem('portfoliocad-theme', theme);
+        }
+      },
+      
+      setShowHome: (show) => set({ showHome: show }),
+      
+      setConfiguration: (projectId, configId) => {
+        const { projects } = get();
+        set({
+          projects: projects.map(p =>
+            p.id === projectId ? { ...p, currentConfiguration: configId } : p
+          ),
+        });
+      },
+      
+      // Admin/Edit mode actions
+      setAuthenticated: (authenticated) => {
+        set({ isAuthenticated: authenticated });
+        if (authenticated && typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('admin-auth', 'true');
+        }
+      },
+      
+      toggleEditMode: () => {
+        const { isAuthenticated, editMode } = get();
+        if (isAuthenticated) {
+          set({ editMode: !editMode });
+        }
+      },
+      
+      logout: () => {
+        set({ isAuthenticated: false, editMode: false });
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('admin-auth');
+        }
+      },
+      
+      setBannerImageId: (imageId: string | undefined) => {
+        set((state) => ({
+          welcomePageData: {
+            ...state.welcomePageData,
+            bannerImageId: imageId,
+          },
+        }));
+      },
+    }),
+    {
+      name: 'portfoliocad-store',
+      version: 3,
+      partialize: (state) => ({
+        // Only persist theme + welcome page settings to avoid bloating storage
+        welcomePageData: state.welcomePageData,
+        theme: state.theme,
+      }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<PortfolioState> | undefined;
+        const current = currentState as PortfolioState;
+        if (!persisted) return current;
+        return {
+          ...current,
+          ...persisted,
+          welcomePageData: {
+            ...current.welcomePageData,
+            ...(persisted.welcomePageData ?? {}),
+          },
+        } as PortfolioState;
+      },
+      migrate: (persisted, version) => {
+        // Version 1->2: Previously added bannerOverlayOpacity (now removed)
+        // Version 2->3: Migrate from bannerImage to bannerImageId
+        // Old data had base64 image in bannerImage field - we can't migrate that to IndexedDB
+        // from here, so we just clear it and let users re-upload if needed
+        if (version < 3) {
+          const state = persisted as any;
+          return {
+            ...state,
+            welcomePageData: {
+              ...state?.welcomePageData,
+              // Remove old bannerImage field if it exists
+              bannerImage: undefined,
+              bannerImageId: undefined, // Fresh start for banner
             },
-          });
+          } as PortfolioState;
         }
-      }
-    },
-    
-    setSearchQuery: (query) => set({ searchQuery: query }),
-    
-    setCategoryFilter: (category) => set({ categoryFilter: category }),
-    
-    startTutorial: () => {
-      const { selectedProjectId, projects } = get();
-      if (!selectedProjectId) return;
-      
-      const project = projects.find(p => p.id === selectedProjectId);
-      if (!project) return;
-      
-      // Generate tutorial steps based on project
-      const steps: TutorialStep[] = [
-        {
-          id: 'intro',
-          instruction: `Welcome to the ${project.name} assembly. Let's explore!`,
-          condition: { type: 'select', value: '' },
-          completed: false,
-        },
-        ...project.subsystems.slice(0, 3).map((sub, i) => ({
-          id: `select-${sub.id}`,
-          instruction: `Select the ${sub.name} subsystem`,
-          condition: { type: 'select' as const, value: sub.id },
-          cameraPosition: [
-            sub.position[0] + 4,
-            sub.position[1] + 3,
-            sub.position[2] + 4,
-          ] as [number, number, number],
-          completed: false,
-        })),
-        {
-          id: 'explode',
-          instruction: 'Use the explode slider to see all components',
-          condition: { type: 'explode', value: '0.5' },
-          completed: false,
-        },
-        {
-          id: 'drawing',
-          instruction: 'Switch to the Drawing tab',
-          condition: { type: 'tab', value: 'drawing' },
-          completed: false,
-        },
-      ];
-      
-      set({
-        tutorialActive: true,
-        tutorialSteps: steps,
-        currentTutorialStep: 0,
-      });
-    },
-    
-    nextTutorialStep: () => {
-      const { currentTutorialStep, tutorialSteps } = get();
-      if (currentTutorialStep < tutorialSteps.length - 1) {
-        set({ currentTutorialStep: currentTutorialStep + 1 });
-      } else {
-        set({ tutorialActive: false, currentTutorialStep: 0 });
-      }
-    },
-    
-    endTutorial: () => set({ tutorialActive: false, currentTutorialStep: 0 }),
-    
-    completeTutorialStep: (stepId) => {
-      const { tutorialSteps } = get();
-      set({
-        tutorialSteps: tutorialSteps.map(step =>
-          step.id === stepId ? { ...step, completed: true } : step
-        ),
-      });
-    },
-    
-    setPanelWidth: (panel, width) => {
-      const state = get();
-      if (panel === 'left') {
-        set({ leftPanelWidth: Math.max(state.leftPanelMinWidth, Math.min(state.leftPanelMaxWidth, width)) });
-      }
-      if (panel === 'right') {
-        set({ rightPanelWidth: Math.max(state.rightPanelMinWidth, Math.min(state.rightPanelMaxWidth, width)) });
-      }
-    },
-    
-    setPanelHeight: (panel, height) => {
-      const state = get();
-      if (panel === 'bottom') {
-        set({ bottomPanelHeight: Math.max(state.bottomPanelMinHeight, Math.min(state.bottomPanelMaxHeight, height)) });
-      }
-    },
-    
-    togglePanel: (panel) => {
-      if (panel === 'left') set((s) => ({ leftPanelCollapsed: !s.leftPanelCollapsed }));
-      if (panel === 'right') set((s) => ({ rightPanelCollapsed: !s.rightPanelCollapsed }));
-      if (panel === 'bottom') set((s) => ({ bottomPanelCollapsed: !s.bottomPanelCollapsed }));
-    },
-    
-    expandRightPanel: () => {
-      const state = get();
-      set({ 
-        rightPanelCollapsed: false, 
-        rightPanelWidth: Math.max(state.rightPanelWidth, 400)
-      });
-    },
-    
-    updateProject: (projectId, updates) => {
-      const { projects } = get();
-      set({
-        projects: projects.map(p =>
-          p.id === projectId ? { ...p, ...updates } : p
-        ),
-      });
-    },
-    
-    addTaggedPart: (projectId, part) => {
-      const { projects } = get();
-      set({
-        projects: projects.map(p => {
-          if (p.id === projectId && p.cadModel) {
-            return {
-              ...p,
-              cadModel: {
-                ...p.cadModel,
-                taggedParts: [...(p.cadModel.taggedParts || []), part],
-              },
-            };
-          }
-          return p;
-        }),
-      });
-    },
-    
-    updateTaggedPart: (projectId, partId, updates) => {
-      const { projects } = get();
-      set({
-        projects: projects.map(p => {
-          if (p.id === projectId && p.cadModel) {
-            return {
-              ...p,
-              cadModel: {
-                ...p.cadModel,
-                taggedParts: p.cadModel.taggedParts.map(part =>
-                  part.id === partId ? { ...part, ...updates } : part
-                ),
-              },
-            };
-          }
-          return p;
-        }),
-      });
-    },
-    
-    removeTaggedPart: (projectId, partId) => {
-      const { projects } = get();
-      set({
-        projects: projects.map(p => {
-          if (p.id === projectId && p.cadModel) {
-            return {
-              ...p,
-              cadModel: {
-                ...p.cadModel,
-                taggedParts: p.cadModel.taggedParts.filter(part => part.id !== partId),
-              },
-            };
-          }
-          return p;
-        }),
-      });
-    },
-    
-    toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
-    
-    toggleTheme: () => {
-      const { theme } = get();
-      const newTheme = theme === 'dark' ? 'light' : 'dark';
-      set({ theme: newTheme });
-      // Update document class for CSS
-      if (typeof document !== 'undefined') {
-        document.documentElement.classList.remove('dark', 'light');
-        document.documentElement.classList.add(newTheme);
-        localStorage.setItem('portfoliocad-theme', newTheme);
-      }
-    },
-    
-    setTheme: (theme) => {
-      set({ theme });
-      if (typeof document !== 'undefined') {
-        document.documentElement.classList.remove('dark', 'light');
-        document.documentElement.classList.add(theme);
-        localStorage.setItem('portfoliocad-theme', theme);
-      }
-    },
-    
-    setShowHome: (show) => set({ showHome: show }),
-    
-    setConfiguration: (projectId, configId) => {
-      const { projects } = get();
-      set({
-        projects: projects.map(p =>
-          p.id === projectId ? { ...p, currentConfiguration: configId } : p
-        ),
-      });
-    },
-    
-    // Admin/Edit mode actions
-    setAuthenticated: (authenticated) => {
-      set({ isAuthenticated: authenticated });
-      if (authenticated && typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('admin-auth', 'true');
-      }
-    },
-    
-    toggleEditMode: () => {
-      const { isAuthenticated, editMode } = get();
-      if (isAuthenticated) {
-        set({ editMode: !editMode });
-      }
-    },
-    
-    logout: () => {
-      set({ isAuthenticated: false, editMode: false });
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem('admin-auth');
-      }
-    },
-  }))
+        
+        return persisted as PortfolioState;
+      },
+    }
+  )
 );
 
 // Keyboard shortcuts handler

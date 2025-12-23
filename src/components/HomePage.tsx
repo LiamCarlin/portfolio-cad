@@ -1,12 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Github,
   Linkedin,
   Mail,
   Phone,
-  FileText,
   ExternalLink,
   ChevronRight,
   Cpu,
@@ -17,6 +16,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { usePortfolioStore, Project } from '@/store/usePortfolioStore';
+import { getImageDataUrl } from '@/lib/imageStorage';
 
 const categoryIcons = {
   robotics: Cpu,
@@ -24,14 +24,6 @@ const categoryIcons = {
   software: Code,
   research: FlaskConical,
   other: Package,
-};
-
-const categoryColors = {
-  robotics: 'from-green-500/20 to-green-600/10 border-green-500/30',
-  vehicles: 'from-blue-500/20 to-blue-600/10 border-blue-500/30',
-  software: 'from-purple-500/20 to-purple-600/10 border-purple-500/30',
-  research: 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30',
-  other: 'from-gray-500/20 to-gray-600/10 border-gray-500/30',
 };
 
 const categoryAccent = {
@@ -42,25 +34,11 @@ const categoryAccent = {
   other: 'text-gray-400',
 };
 
-// Profile configuration - edit these for your portfolio
-const PROFILE = {
-  name: 'Liam Carlin',
-  title: 'Mechanical Engineering Student',
-  school: 'Olin College of Engineering',
-  bio: 'Passionate about robotics, mechanical design, and building things that move. I love tackling complex engineering challenges and turning ideas into reality through CAD, prototyping, and iteration.',
-  avatar: '/avatar.jpg', // Add your photo to public folder
-  links: {
-    email: 'lcarlin@olin.edu',
-    phone: '+1 (555) 123-4567',
-    linkedin: 'https://linkedin.com/in/liamcarlin',
-    github: 'https://github.com/liamcarlin',
-    resume: '/resume.pdf', // Add your resume to public folder
-  },
-};
+// Profile configuration is now in the store - edit via admin panel
+// See WelcomePageEditor component for editing
 
-function ProjectCard({ project, onClick }: { project: Project; onClick: () => void }) {
+function ProjectCard({ project, onClick, lightMode }: { project: Project; onClick: () => void; lightMode: boolean }) {
   const CategoryIcon = categoryIcons[project.category];
-  const gradientClass = categoryColors[project.category];
   const accentClass = categoryAccent[project.category];
   
   // Get thumbnail - use project thumbnail, first image, or placeholder
@@ -71,45 +49,56 @@ function ProjectCard({ project, onClick }: { project: Project; onClick: () => vo
     <button
       onClick={onClick}
       className={`
-        group relative w-full text-left rounded-xl overflow-hidden
-        bg-gradient-to-br ${gradientClass} border
-        hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/10
+        group relative w-full text-left rounded-xl overflow-hidden h-full flex flex-col
+        ${lightMode 
+          ? 'bg-white border border-gray-300 hover:shadow-lg hover:border-gray-400' 
+          : 'bg-gray-900 border border-gray-700 hover:shadow-xl hover:border-gray-600'
+        }
+        hover:scale-[1.02]
         transition-all duration-300 ease-out
       `}
     >
       {/* Thumbnail */}
-      <div className="aspect-video w-full bg-gray-800 relative overflow-hidden">
+      <div className={`relative aspect-video min-h-[180px] w-full overflow-hidden ${lightMode ? 'bg-gray-200' : 'bg-gray-800'}`}>
         {thumbnail ? (
           <img 
             src={thumbnail} 
             alt={project.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+          <div className={`absolute inset-0 flex items-center justify-center ${lightMode ? 'bg-gradient-to-br from-gray-200 to-gray-300' : 'bg-gradient-to-br from-gray-800 to-gray-900'}`}>
             <CategoryIcon size={48} className={`${accentClass} opacity-50`} />
           </div>
         )}
         
         {/* Category badge */}
-        <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-900/80 backdrop-blur-sm ${accentClass}`}>
+        <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm ${lightMode ? 'bg-white/90 text-gray-900' : `bg-gray-900/80 ${accentClass}`}`}>
           <CategoryIcon size={12} />
           <span className="text-xs font-medium capitalize">{project.category}</span>
         </div>
         
         {/* Year badge */}
-        <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-gray-900/80 backdrop-blur-sm text-gray-300">
+        <div className={`absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full backdrop-blur-sm ${lightMode ? 'bg-white/90 text-gray-900' : 'bg-gray-900/80 text-gray-300'}`}>
           <Calendar size={10} />
           <span className="text-xs">{project.year}</span>
         </div>
       </div>
       
       {/* Content */}
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">
+      <div className="p-4 flex-1 flex flex-col">
+        <h3 className={`text-lg font-semibold mb-2 transition-colors ${lightMode ? 'text-gray-900 group-hover:text-blue-600' : 'text-white group-hover:text-blue-400'}`}>
           {project.name}
         </h3>
-        <p className="text-sm text-gray-400 line-clamp-2 mb-3">
+        <p
+          className={`text-sm mb-3 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical' as const,
+            overflow: 'hidden',
+          }}
+        >
           {project.description}
         </p>
         
@@ -118,20 +107,20 @@ function ProjectCard({ project, onClick }: { project: Project; onClick: () => vo
           {project.tools.slice(0, 4).map((tool, i) => (
             <span 
               key={i}
-              className="px-2 py-0.5 text-xs rounded bg-gray-800/80 text-gray-400"
+              className={`px-2 py-0.5 text-xs rounded ${lightMode ? 'bg-gray-200 text-gray-700' : 'bg-gray-800/80 text-gray-400'}`}
             >
               {tool}
             </span>
           ))}
           {project.tools.length > 4 && (
-            <span className="px-2 py-0.5 text-xs rounded bg-gray-800/80 text-gray-500">
+            <span className={`px-2 py-0.5 text-xs rounded ${lightMode ? 'bg-gray-200 text-gray-600' : 'bg-gray-800/80 text-gray-500'}`}>
               +{project.tools.length - 4}
             </span>
           )}
         </div>
         
         {/* View project link */}
-        <div className="flex items-center gap-1 text-blue-400 text-sm font-medium group-hover:gap-2 transition-all">
+        <div className={`mt-auto flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all ${lightMode ? 'text-blue-600' : 'text-blue-400'}`}>
           <span>View Project</span>
           <ChevronRight size={14} />
         </div>
@@ -145,110 +134,163 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onSelectProject }: HomePageProps) {
-  const { projects, theme, setShowHome } = usePortfolioStore();
-  const lightMode = theme === 'light';
+  const { projects, theme, welcomePageData } = usePortfolioStore();
+  const [bannerImageData, setBannerImageData] = useState<string | null>(null);
+  const [isLoadingBanner, setIsLoadingBanner] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  // Wait for hydration to complete before rendering theme-dependent styles
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+  
+  // Always use dark mode until hydration completes to prevent flash
+  const lightMode = isHydrated ? theme === 'light' : false;
+  
+  // Load banner image from IndexedDB
+  useEffect(() => {
+    if (welcomePageData.bannerImageId) {
+      setIsLoadingBanner(true);
+      getImageDataUrl(welcomePageData.bannerImageId)
+        .then((dataUrl) => {
+          setBannerImageData(dataUrl);
+        })
+        .catch((err) => {
+          console.error('Failed to load banner image:', err);
+          setBannerImageData(null);
+        })
+        .finally(() => {
+          setIsLoadingBanner(false);
+        });
+    } else {
+      setBannerImageData(null);
+    }
+  }, [welcomePageData.bannerImageId]);
   
   return (
     <div className={`min-h-screen ${lightMode ? 'bg-gray-100' : 'bg-gray-950'}`}>
       {/* Hero Section */}
       <div className={`relative overflow-hidden ${lightMode ? 'bg-white' : 'bg-gray-900'}`}>
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
-        </div>
+        {/* Banner Image */}
+        {bannerImageData && !isLoadingBanner && (
+          <div className="absolute inset-0 h-[500px]">
+            <img 
+              src={bannerImageData} 
+              alt="Banner"
+              className="w-full h-full object-cover"
+            />
+            {/* Darkness overlay */}
+            <div 
+              className="absolute inset-0 bg-black transition-opacity"
+              style={{ opacity: (welcomePageData.bannerDarkness ?? 30) / 100 }}
+            />
+          </div>
+        )}
+        
+        {/* Background pattern (if no banner) */}
+        {!bannerImageData && !isLoadingBanner && (
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }} />
+          </div>
+        )}
         
         <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24">
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-1">
-                <div className={`w-full h-full rounded-full ${lightMode ? 'bg-gray-100' : 'bg-gray-800'} flex items-center justify-center overflow-hidden`}>
-                  {/* Replace with actual avatar */}
-                  <span className={`text-5xl md:text-6xl font-bold ${lightMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {PROFILE.name.split(' ').map(n => n[0]).join('')}
-                  </span>
-                </div>
+              <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${lightMode ? 'bg-gray-200' : 'bg-gray-800'} flex items-center justify-center overflow-hidden`}>
+                {/* Replace with actual avatar */}
+                <span className={`text-5xl md:text-6xl font-bold ${lightMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {welcomePageData.name.split(' ').map(n => n[0]).join('')}
+                </span>
               </div>
               {/* Status indicator */}
-              <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 border-gray-900" title="Available for opportunities" />
+              <div className={`absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 ${lightMode ? 'border-gray-100' : 'border-gray-900'}`} title="Available for opportunities" />
             </div>
             
             {/* Info */}
             <div className="text-center md:text-left flex-1">
-              <h1 className={`text-3xl md:text-4xl font-bold mb-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
-                {PROFILE.name}
+              <h1 className="text-3xl md:text-4xl font-bold mb-2 text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+                {welcomePageData.name}
               </h1>
-              <p className="text-blue-400 font-medium mb-1">{PROFILE.title}</p>
-              <p className={`text-sm mb-4 ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>{PROFILE.school}</p>
-              <p className={`text-base max-w-xl mb-6 ${lightMode ? 'text-gray-600' : 'text-gray-300'}`}>
-                {PROFILE.bio}
+              <p className="text-blue-200 font-medium mb-1" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{welcomePageData.title}</p>
+              <p className="text-gray-100 text-sm mb-4" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{welcomePageData.school}</p>
+              <p className="text-gray-50 text-base max-w-xl mb-6" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
+                {welcomePageData.bio}
               </p>
               
               {/* Links */}
-              <div className="flex flex-wrap justify-center md:justify-start gap-3">
-                <a
-                  href={`mailto:${PROFILE.links.email}`}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
-                >
-                  <Mail size={16} />
-                  <span>Contact Me</span>
-                </a>
-                
-                <a
-                  href={PROFILE.links.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    lightMode 
-                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                      : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
-                  }`}
-                >
-                  <Linkedin size={16} />
-                  <span>LinkedIn</span>
-                </a>
-                
-                <a
-                  href={PROFILE.links.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    lightMode 
-                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                      : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
-                  }`}
-                >
-                  <Github size={16} />
-                  <span>GitHub</span>
-                </a>
-                
-                <a
-                  href={PROFILE.links.resume}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    lightMode 
-                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' 
-                      : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
-                  }`}
-                >
-                  <FileText size={16} />
-                  <span>Resume</span>
-                </a>
-              </div>
-              
-              {/* Additional contact */}
-              <div className={`mt-4 flex flex-wrap justify-center md:justify-start gap-4 text-sm ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                <a href={`mailto:${PROFILE.links.email}`} className="flex items-center gap-1 hover:text-blue-400 transition-colors">
-                  <Mail size={14} />
-                  <span>{PROFILE.links.email}</span>
-                </a>
-                <a href={`tel:${PROFILE.links.phone}`} className="flex items-center gap-1 hover:text-blue-400 transition-colors">
-                  <Phone size={14} />
-                  <span>{PROFILE.links.phone}</span>
-                </a>
+              <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                {welcomePageData.socialLinks.map((link) => {
+                  if (link.platform === 'email') {
+                    return (
+                      <a
+                        key={link.id}
+                        href={`mailto:${link.url}`}
+                        className="flex flex-col items-center gap-2 group"
+                        title={link.label || link.platform}
+                      >
+                        {link.icon ? (
+                          <img 
+                            src={link.icon} 
+                            alt={link.label || link.platform}
+                            className="w-12 h-12 rounded-lg object-cover hover:shadow-lg transition-all"
+                          />
+                        ) : (
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-semibold transition-colors ${
+                            lightMode 
+                              ? 'bg-gray-200 text-gray-700' 
+                              : 'bg-gray-700 text-gray-200'
+                          }`}>
+                            ✉️
+                          </div>
+                        )}
+                        <span className="text-xs font-medium whitespace-nowrap group-hover:text-blue-500 transition-colors">
+                          {link.label || 'Email'}
+                        </span>
+                      </a>
+                    );
+                  }
+                  
+                  return (
+                    <a
+                      key={link.id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-2 group"
+                      title={link.label || link.platform}
+                    >
+                      {link.icon ? (
+                        <img 
+                          src={link.icon} 
+                          alt={link.label || link.platform}
+                          className="w-12 h-12 rounded-lg object-cover hover:shadow-lg transition-all"
+                        />
+                      ) : (
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-semibold transition-colors ${
+                          lightMode 
+                            ? 'bg-gray-200 text-gray-700 group-hover:bg-gray-300' 
+                            : 'bg-gray-700 text-gray-200 group-hover:bg-gray-600'
+                        }`}>
+                          {link.platform === 'linkedin' && <Linkedin size={18} />}
+                          {link.platform === 'github' && <Github size={18} />}
+                          {link.platform === 'twitter' && '𝕏'}
+                          {link.platform === 'discord' && '💬'}
+                          {link.platform === 'instagram' && '📷'}
+                          {link.platform === 'youtube' && '▶️'}
+                          {link.platform === 'website' && <ExternalLink size={18} />}
+                          {link.platform === 'phone' && <Phone size={18} />}
+                        </div>
+                      )}
+                      <span className="text-xs font-medium whitespace-nowrap group-hover:text-blue-500 transition-colors">
+                        {link.label || link.platform}
+                      </span>
+                    </a>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -265,15 +307,10 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
               </div>
               <div className="flex-1">
                 <h3 className={`text-xl font-bold mb-3 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
-                  About This Portfolio
+                  {welcomePageData.aboutTitle}
                 </h3>
-                <p className={`text-base leading-relaxed mb-4 ${lightMode ? 'text-gray-600' : 'text-gray-300'}`}>
-                  I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. 
-                  Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment.
-                </p>
                 <p className={`text-base leading-relaxed ${lightMode ? 'text-gray-600' : 'text-gray-300'}`}>
-                  This portfolio itself is a demonstration of my skills in software development, 3D visualization, and user experience design. 
-                  It's built with React, Three.js, and modern web technologies to create a seamless experience for exploring mechanical designs and engineering documentation.
+                  {welcomePageData.aboutContent}
                 </p>
               </div>
             </div>
@@ -304,6 +341,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
               key={project.id}
               project={project}
               onClick={() => onSelectProject(project.id)}
+              lightMode={lightMode}
             />
           ))}
         </div>
@@ -321,21 +359,61 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className={`text-sm ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
-              © {new Date().getFullYear()} {PROFILE.name}. Built with passion and precision.
+              © {new Date().getFullYear()} {welcomePageData.name}. Built with passion and precision.
             </p>
             <div className="flex items-center gap-4">
-              <a href={PROFILE.links.github} target="_blank" rel="noopener noreferrer" 
-                className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}>
-                <Github size={18} />
-              </a>
-              <a href={PROFILE.links.linkedin} target="_blank" rel="noopener noreferrer"
-                className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}>
-                <Linkedin size={18} />
-              </a>
-              <a href={`mailto:${PROFILE.links.email}`}
-                className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}>
-                <Mail size={18} />
-              </a>
+              {welcomePageData.socialLinks.map((link) => {
+                // Build link href
+                let href = link.url;
+                if (link.platform === 'email') {
+                  href = `mailto:${link.url}`;
+                }
+
+                // If no icon, only show standard platforms
+                if (!link.icon) {
+                  if (link.platform === 'email') {
+                    return (
+                      <a key={link.id} href={href}
+                        className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
+                        title={link.label || 'Email'}>
+                        <Mail size={18} />
+                      </a>
+                    );
+                  }
+                  if (link.platform === 'github') {
+                    return (
+                      <a key={link.id} href={href} target="_blank" rel="noopener noreferrer"
+                        className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
+                        title={link.label || 'GitHub'}>
+                        <Github size={18} />
+                      </a>
+                    );
+                  }
+                  if (link.platform === 'linkedin') {
+                    return (
+                      <a key={link.id} href={href} target="_blank" rel="noopener noreferrer"
+                        className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
+                        title={link.label || 'LinkedIn'}>
+                        <Linkedin size={18} />
+                      </a>
+                    );
+                  }
+                  return null;
+                }
+
+                // Display links with icons
+                return (
+                  <a key={link.id} href={href} target={link.platform === 'email' ? undefined : '_blank'} rel={link.platform === 'email' ? undefined : 'noopener noreferrer'}
+                    className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
+                    title={link.label || link.platform}>
+                    <img 
+                      src={link.icon} 
+                      alt={link.label || link.platform}
+                      className="w-6 h-6 rounded object-cover"
+                    />
+                  </a>
+                );
+              })}
             </div>
           </div>
         </div>

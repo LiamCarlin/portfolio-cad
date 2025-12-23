@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Trash2,
-  Save,
   Download,
   Upload,
   ChevronDown,
@@ -12,7 +11,6 @@ import {
   Box,
   Edit2,
   Copy,
-  Eye,
   ArrowLeft,
   Check,
   X,
@@ -26,12 +24,11 @@ import {
   Link2,
   Quote,
   GripVertical,
-  FileText,
   Boxes,
   Tag,
-  MousePointer,
+  FileText,
 } from 'lucide-react';
-import { Project, Subsystem, Milestone, Configuration, ContentBlock, TaggedPart, CADModel, UploadedImage, CADAnnotation } from '@/store/usePortfolioStore';
+import { Project, Milestone, ContentBlock, TaggedPart, Subsystem, UploadedImage, usePortfolioStore } from '@/store/usePortfolioStore';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { FileUpload, MultiImageUpload, ImagePreview } from '@/components/admin/FileUpload';
@@ -62,6 +59,24 @@ const SubsystemCADAnnotator = dynamic(
     )
   }
 );
+
+// Dynamically import WelcomePageEditor
+const WelcomePageEditorDynamic = dynamic(
+  () => import('@/components/admin/WelcomePageEditor').then(mod => mod.WelcomePageEditor),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 flex items-center justify-center">
+        <div className="text-gray-400">Loading welcome page editor...</div>
+      </div>
+    )
+  }
+);
+
+// Wrapper component for WelcomePageEditor to use as a tab
+function WelcomePageEditorTab() {
+  return <WelcomePageEditorDynamic />;
+}
 
 // Admin password - in production, use environment variables and proper auth
 const ADMIN_PASSWORD = 'admin123'; // Change this!
@@ -204,6 +219,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'content' | 'cad' | 'images' | 'subsystems' | 'milestones' | 'export'>('details');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [viewMode, setViewMode] = useState<'welcome' | 'projects'>('projects');
+  const { theme } = usePortfolioStore();
+  const lightMode = theme === 'light';
 
   // Check for existing auth on mount
   useEffect(() => {
@@ -369,7 +387,7 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className={`min-h-screen ${lightMode ? 'bg-white text-gray-900' : 'bg-gray-950 text-white'}`}>
       {/* Notification */}
       {notification && (
         <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
@@ -381,17 +399,17 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
       )}
 
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-700 px-6 py-4">
+      <header className={`${lightMode ? 'bg-gray-50 border-gray-200' : 'bg-gray-900 border-gray-700'} border-b px-6 py-4`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link 
               href="/"
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+              className={`flex items-center gap-2 ${lightMode ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 hover:text-white'} transition-colors`}
             >
               <ArrowLeft size={20} />
               Back to Portfolio
             </Link>
-            <div className="h-6 w-px bg-gray-700" />
+            <div className={`h-6 w-px ${lightMode ? 'bg-gray-200' : 'bg-gray-700'}`} />
             <h1 className="text-xl font-bold">PortfolioCAD Admin</h1>
             <span className={`text-xs px-2 py-1 rounded ${
               saveStatus === 'saved' ? 'bg-green-600/20 text-green-400' :
@@ -402,14 +420,14 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+            <label className={`flex items-center gap-2 px-4 py-2 ${lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-gray-800 hover:bg-gray-700 text-white'} rounded-lg cursor-pointer transition-colors`}>
               <Upload size={18} />
               Import
               <input type="file" accept=".json" onChange={importProjects} className="hidden" />
             </label>
             <button
               onClick={exportProjects}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+              className={`flex items-center gap-2 px-4 py-2 ${lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-gray-800 hover:bg-gray-700'} rounded-lg transition-colors`}
             >
               <Download size={18} />
               Export JSON
@@ -426,79 +444,137 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
       </header>
 
       <div className="flex h-[calc(100vh-73px)]">
-        {/* Sidebar - Project list */}
-        <aside className="w-80 bg-gray-900 border-r border-gray-700 flex flex-col">
-          <div className="p-4 border-b border-gray-700">
+        {/* Sidebar - Navigation and Project list */}
+        <aside className={`w-80 ${lightMode ? 'bg-gray-50 border-gray-200' : 'bg-gray-900 border-gray-700'} border-r flex flex-col`}>
+          <div className={`p-4 border-b ${lightMode ? 'border-gray-200' : 'border-gray-700'} space-y-2`}>
+            {/* Welcome Page Button */}
             <button
-              onClick={addProject}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+              onClick={() => setViewMode('welcome')}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+                viewMode === 'welcome'
+                  ? 'bg-purple-600 hover:bg-purple-500 text-white'
+                  : lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-gray-800 hover:bg-gray-700 text-white'
+              }`}
+            >
+              <Edit2 size={18} />
+              Welcome Page
+            </button>
+            
+            {/* Projects Section Button */}
+            <button
+              onClick={() => setViewMode('projects')}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+                viewMode === 'projects'
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                  : lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-gray-800 hover:bg-gray-700 text-white'
+              }`}
             >
               <Plus size={18} />
-              New Project
+              Projects
             </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-2">
-            {projects.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                <Folder size={48} className="mx-auto mb-2 opacity-30" />
-                <p>No projects yet</p>
-                <p className="text-sm">Click "New Project" to start</p>
-              </div>
-            ) : (
-              projects.map(project => (
-                <div
-                  key={project.id}
-                  className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors mb-1 ${
-                    selectedProjectId === project.id
-                      ? 'bg-blue-600'
-                      : 'hover:bg-gray-800'
-                  }`}
-                  onClick={() => setSelectedProjectId(project.id)}
+          {/* Projects List - Only show when in projects view */}
+          {viewMode === 'projects' && (
+            <>
+              <div className={`p-4 border-b ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}>
+                <button
+                  onClick={addProject}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors text-white"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Box size={18} className="flex-shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{project.name}</div>
-                      <div className="text-xs text-gray-400">{project.year} • {project.category}</div>
+                  <Plus size={18} />
+                  New Project
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-2">
+                {projects.length === 0 ? (
+                  <div className={`text-center ${lightMode ? 'text-gray-400' : 'text-gray-500'} py-8`}>
+                    <Folder size={48} className="mx-auto mb-2 opacity-30" />
+                    <p>No projects yet</p>
+                    <p className="text-sm">Click "New Project" to start</p>
+                  </div>
+                ) : (
+                  projects.map(project => (
+                    <div
+                      key={project.id}
+                      className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors mb-1 ${
+                        selectedProjectId === project.id
+                          ? 'bg-blue-600 text-white'
+                          : lightMode ? 'hover:bg-gray-100' : 'hover:bg-gray-800'
+                      }`}
+                      onClick={() => setSelectedProjectId(project.id)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Box size={18} className="flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{project.name}</div>
+                          <div className={`text-xs ${selectedProjectId === project.id ? 'text-gray-300' : lightMode ? 'text-gray-500' : 'text-gray-400'}`}>{project.year} • {project.category}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); duplicateProject(project); }}
+                          className={`p-1 rounded transition-colors ${selectedProjectId === project.id ? 'hover:bg-blue-700' : lightMode ? 'hover:bg-gray-200' : 'hover:bg-gray-700'}`}
+                          title="Duplicate"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
+                          className={`p-1 rounded transition-colors ${selectedProjectId === project.id ? 'hover:bg-red-700' : 'hover:bg-red-600'}`}
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); duplicateProject(project); }}
-                      className="p-1 hover:bg-gray-700 rounded"
-                      title="Duplicate"
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
-                      className="p-1 hover:bg-red-600 rounded"
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </aside>
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
-          {selectedProject ? (
-            <div className="p-6">
+          <div className="p-6">
+            {/* Welcome Page Editor - Only show when in welcome view */}
+            {viewMode === 'welcome' && (
+              <div className="mb-12">
+                <div className="mb-4">
+                  <h2 className={`text-2xl font-bold ${lightMode ? 'text-gray-900' : 'text-white'} mb-2`}>Welcome Page Settings</h2>
+                  <p className={lightMode ? 'text-gray-600' : 'text-gray-400'}>Edit your portfolio banner, social links, and personal information</p>
+                </div>
+                <div className={`rounded-lg border p-6 ${lightMode ? 'border-gray-300 bg-gray-100' : 'border-gray-700 bg-gray-900/50'}`}>
+                  <WelcomePageEditorTab />
+                </div>
+              </div>
+            )}
+
+            {/* Projects Section - Only show when in projects view */}
+            {viewMode === 'projects' && (
+            <div>
+              <div className="mb-4">
+                <h2 className={`text-2xl font-bold ${lightMode ? 'text-gray-900' : 'text-white'} mb-2`}>Project Management</h2>
+                <p className={lightMode ? 'text-gray-600' : 'text-gray-400'}>Manage and edit your portfolio projects</p>
+              </div>
+
               {/* Tabs */}
-              <div className="flex items-center gap-1 mb-6 border-b border-gray-700 overflow-x-auto">
+              <div className={`flex items-center gap-1 mb-6 border-b ${lightMode ? 'border-gray-300' : 'border-gray-700'} overflow-x-auto`}>
                 {(['details', 'content', 'cad', 'images', 'subsystems', 'milestones', 'export'] as const).map(tab => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => {
+                      setActiveTab(tab as any);
+                      if (selectedProject === null) {
+                        setSelectedProjectId(projects[0]?.id || null);
+                      }
+                    }}
                     className={`px-4 py-2 capitalize transition-colors whitespace-nowrap flex items-center gap-2 ${
                       activeTab === tab
-                        ? 'text-blue-400 border-b-2 border-blue-400'
-                        : 'text-gray-400 hover:text-white'
+                        ? `text-blue-500 border-b-2 border-blue-500 ${lightMode ? 'text-blue-600' : ''}`
+                        : lightMode ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     {tab === 'cad' && <Boxes size={16} />}
@@ -508,38 +584,43 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
                 ))}
               </div>
 
-              {/* Tab content */}
-              {activeTab === 'details' && (
-                <ProjectDetailsForm project={selectedProject} onUpdate={updateProject} />
+              {selectedProject && (
+                <>
+                  {activeTab === 'details' && (
+                    <ProjectDetailsForm project={selectedProject} onUpdate={updateProject} lightMode={lightMode} />
+                  )}
+                  {activeTab === 'content' && (
+                    <ContentBlocksEditor project={selectedProject} onUpdate={updateProject} lightMode={lightMode} />
+                  )}
+                  {activeTab === 'cad' && (
+                    <CADModelEditor project={selectedProject} onUpdate={updateProject} lightMode={lightMode} />
+                  )}
+                  {activeTab === 'images' && (
+                    <ImagesEditor project={selectedProject} onUpdate={updateProject} lightMode={lightMode} />
+                  )}
+                  {activeTab === 'subsystems' && (
+                    <SubsystemsEditor project={selectedProject} onUpdate={updateProject} lightMode={lightMode} />
+                  )}
+                  {activeTab === 'milestones' && (
+                    <MilestonesEditor project={selectedProject} onUpdate={updateProject} lightMode={lightMode} />
+                  )}
+                  {activeTab === 'export' && (
+                    <ExportPreview project={selectedProject} lightMode={lightMode} />
+                  )}
+                </>
               )}
-              {activeTab === 'content' && (
-                <ContentBlocksEditor project={selectedProject} onUpdate={updateProject} />
-              )}
-              {activeTab === 'cad' && (
-                <CADModelEditor project={selectedProject} onUpdate={updateProject} />
-              )}
-              {activeTab === 'images' && (
-                <ImagesEditor project={selectedProject} onUpdate={updateProject} />
-              )}
-              {activeTab === 'subsystems' && (
-                <SubsystemsEditor project={selectedProject} onUpdate={updateProject} />
-              )}
-              {activeTab === 'milestones' && (
-                <MilestonesEditor project={selectedProject} onUpdate={updateProject} />
-              )}
-              {activeTab === 'export' && (
-                <ExportPreview project={selectedProject} />
+              {!selectedProject && (
+                <div className={`flex items-center justify-center h-96 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <div className="text-center">
+                    <Box size={64} className="mx-auto mb-4 opacity-30" />
+                    <p className="text-lg">Select a project to edit</p>
+                    <p className="text-sm">or create a new one</p>
+                  </div>
+                </div>
               )}
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <div className="text-center">
-                <Box size={64} className="mx-auto mb-4 opacity-30" />
-                <p className="text-lg">Select a project to edit</p>
-                <p className="text-sm">or create a new one</p>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
     </div>
@@ -547,8 +628,18 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
 }
 
 // Project Details Form
-function ProjectDetailsForm({ project, onUpdate }: { project: Project; onUpdate: (updates: Partial<Project>) => void }) {
+function ProjectDetailsForm({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const [toolInput, setToolInput] = useState('');
+  
+  // Theme-aware styling
+  const labelClass = lightMode ? 'text-gray-700' : 'text-gray-400';
+  const inputClass = lightMode 
+    ? 'bg-white border border-gray-300 text-gray-900 focus:border-blue-500' 
+    : 'bg-gray-800 border border-gray-700 text-white focus:border-blue-500';
+  const tagBgClass = lightMode ? 'bg-gray-200' : 'bg-gray-800';
+  const buttonSecondaryClass = lightMode 
+    ? 'bg-gray-200 hover:bg-gray-300 text-gray-900' 
+    : 'bg-gray-700 hover:bg-gray-600 text-white';
 
   const addTool = () => {
     if (toolInput.trim()) {
@@ -565,30 +656,30 @@ function ProjectDetailsForm({ project, onUpdate }: { project: Project; onUpdate:
     <div className="space-y-6 max-w-3xl">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Project Name *</label>
+          <label className={`block text-sm ${labelClass} mb-1`}>Project Name *</label>
           <input
             type="text"
             value={project.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+            className={`w-full rounded-lg px-3 py-2 focus:outline-none ${inputClass}`}
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Year</label>
+            <label className={`block text-sm ${labelClass} mb-1`}>Year</label>
             <input
               type="number"
               value={project.year}
               onChange={(e) => onUpdate({ year: parseInt(e.target.value) })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className={`w-full rounded-lg px-3 py-2 focus:outline-none ${inputClass}`}
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Category</label>
+            <label className={`block text-sm ${labelClass} mb-1`}>Category</label>
             <select
               value={project.category}
               onChange={(e) => onUpdate({ category: e.target.value as Project['category'] })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className={`w-full rounded-lg px-3 py-2 focus:outline-none ${inputClass}`}
             >
               <option value="robotics">Robotics</option>
               <option value="vehicles">Vehicles</option>
@@ -601,70 +692,70 @@ function ProjectDetailsForm({ project, onUpdate }: { project: Project; onUpdate:
       </div>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Your Role</label>
+        <label className={`block text-sm ${labelClass} mb-1`}>Your Role</label>
         <input
           type="text"
           value={project.role}
           onChange={(e) => onUpdate({ role: e.target.value })}
           placeholder="e.g., Lead Engineer, Software Developer"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+          className={`w-full rounded-lg px-3 py-2 focus:outline-none ${inputClass}`}
         />
       </div>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Description</label>
+        <label className={`block text-sm ${labelClass} mb-1`}>Description</label>
         <textarea
           value={project.description}
           onChange={(e) => onUpdate({ description: e.target.value })}
           rows={3}
           placeholder="Brief overview of the project..."
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-none"
+          className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Challenge</label>
+          <label className={`block text-sm ${labelClass} mb-1`}>Challenge</label>
           <textarea
             value={project.challenge}
             onChange={(e) => onUpdate({ challenge: e.target.value })}
             rows={2}
             placeholder="What problem did you solve?"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-none"
+            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Solution</label>
+          <label className={`block text-sm ${labelClass} mb-1`}>Solution</label>
           <textarea
             value={project.solution}
             onChange={(e) => onUpdate({ solution: e.target.value })}
             rows={2}
             placeholder="How did you solve it?"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-none"
+            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Impact</label>
+          <label className={`block text-sm ${labelClass} mb-1`}>Impact</label>
           <textarea
             value={project.impact}
             onChange={(e) => onUpdate({ impact: e.target.value })}
             rows={2}
             placeholder="What were the results?"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-none"
+            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Tools & Technologies</label>
+        <label className={`block text-sm ${labelClass} mb-1`}>Tools & Technologies</label>
         <div className="flex flex-wrap gap-2 mb-2">
           {project.tools.map((tool, i) => (
             <span
               key={i}
-              className="flex items-center gap-1 px-2 py-1 bg-gray-800 rounded text-sm"
+              className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${tagBgClass}`}
             >
               {tool}
-              <button onClick={() => removeTool(i)} className="text-gray-500 hover:text-red-400">
+              <button onClick={() => removeTool(i)} className={`${lightMode ? 'text-gray-600 hover:text-red-600' : 'text-gray-500 hover:text-red-400'}`}>
                 <X size={14} />
               </button>
             </span>
@@ -677,11 +768,11 @@ function ProjectDetailsForm({ project, onUpdate }: { project: Project; onUpdate:
             onChange={(e) => setToolInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTool()}
             placeholder="Add a tool..."
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+            className={`flex-1 rounded-lg px-3 py-2 focus:outline-none ${inputClass}`}
           />
           <button
             onClick={addTool}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            className={`px-4 py-2 rounded-lg transition-colors ${buttonSecondaryClass}`}
           >
             Add
           </button>
@@ -689,66 +780,66 @@ function ProjectDetailsForm({ project, onUpdate }: { project: Project; onUpdate:
       </div>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-2">Links</label>
+        <label className={`block text-sm ${labelClass} mb-2`}>Links</label>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">GitHub</label>
+            <label className={`block text-xs ${lightMode ? 'text-gray-600' : 'text-gray-500'} mb-1`}>GitHub</label>
             <input
               type="url"
               value={project.links.github || ''}
               onChange={(e) => onUpdate({ links: { ...project.links, github: e.target.value || undefined } })}
               placeholder="https://github.com/..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+              className={`w-full rounded-lg px-3 py-2 focus:outline-none text-sm ${inputClass}`}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Video</label>
+            <label className={`block text-xs ${lightMode ? 'text-gray-600' : 'text-gray-500'} mb-1`}>Video</label>
             <input
               type="url"
               value={project.links.video || ''}
               onChange={(e) => onUpdate({ links: { ...project.links, video: e.target.value || undefined } })}
               placeholder="https://youtube.com/..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+              className={`w-full rounded-lg px-3 py-2 focus:outline-none text-sm ${inputClass}`}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">CAD Document (Onshape)</label>
+            <label className={`block text-xs ${lightMode ? 'text-gray-600' : 'text-gray-500'} mb-1`}>CAD Document (Onshape)</label>
             <input
               type="url"
               value={project.links.onshape || ''}
               onChange={(e) => onUpdate({ links: { ...project.links, onshape: e.target.value || undefined } })}
               placeholder="https://onshape.com/..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+              className={`w-full rounded-lg px-3 py-2 focus:outline-none text-sm ${inputClass}`}
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Writeup / Documentation</label>
+            <label className={`block text-xs ${lightMode ? 'text-gray-600' : 'text-gray-500'} mb-1`}>Writeup / Documentation</label>
             <input
               type="url"
               value={project.links.writeup || ''}
               onChange={(e) => onUpdate({ links: { ...project.links, writeup: e.target.value || undefined } })}
               placeholder="https://..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+              className={`w-full rounded-lg px-3 py-2 focus:outline-none text-sm ${inputClass}`}
             />
           </div>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Thumbnail Image URL</label>
+        <label className={`block text-sm ${labelClass} mb-1`}>Thumbnail Image URL</label>
         <input
           type="url"
           value={project.thumbnail || ''}
           onChange={(e) => onUpdate({ thumbnail: e.target.value || undefined })}
           placeholder="https://example.com/image.jpg"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+          className={`w-full rounded-lg px-3 py-2 focus:outline-none ${inputClass}`}
         />
         {project.thumbnail && (
           <div className="mt-2">
             <img 
               src={project.thumbnail} 
               alt="Thumbnail preview" 
-              className="w-32 h-24 object-cover rounded border border-gray-700"
+              className={`w-32 h-24 object-cover rounded border ${lightMode ? 'border-gray-300' : 'border-gray-700'}`}
               onError={(e) => (e.currentTarget.style.display = 'none')}
             />
           </div>
@@ -759,7 +850,7 @@ function ProjectDetailsForm({ project, onUpdate }: { project: Project; onUpdate:
 }
 
 // Content Blocks Editor - Flexible content sections
-function ContentBlocksEditor({ project, onUpdate }: { project: Project; onUpdate: (updates: Partial<Project>) => void }) {
+function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const blocks = project.contentBlocks || [];
 
   const addBlock = (type: ContentBlock['type']) => {
@@ -1176,7 +1267,7 @@ function ContentBlockItem({
 }
 
 // Subsystems Editor
-function SubsystemsEditor({ project, onUpdate }: { project: Project; onUpdate: (updates: Partial<Project>) => void }) {
+function SubsystemsEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -1393,10 +1484,10 @@ function SubsystemItem({
           <div>
             <label className="block text-sm text-gray-400 mb-1">Tools Used</label>
             <div className="flex flex-wrap gap-1 mb-2">
-              {subsystem.tools.map((tool, i) => (
+              {subsystem.tools.map((tool: string, i: number) => (
                 <span key={i} className="flex items-center gap-1 px-2 py-1 bg-gray-800 rounded text-sm">
                   {tool}
-                  <button onClick={() => onUpdate({ tools: subsystem.tools.filter((_, idx) => idx !== i) })} className="text-gray-500 hover:text-red-400">
+                  <button onClick={() => onUpdate({ tools: subsystem.tools.filter((_: string, idx: number) => idx !== i) })} className="text-gray-500 hover:text-red-400">
                     <X size={12} />
                   </button>
                 </span>
@@ -1418,10 +1509,10 @@ function SubsystemItem({
           <div>
             <label className="block text-sm text-gray-400 mb-1">Key Outcomes</label>
             <div className="space-y-1 mb-2">
-              {subsystem.outcomes.map((outcome, i) => (
+              {subsystem.outcomes.map((outcome: string, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
                   <span className="flex-1 bg-gray-800 px-2 py-1 rounded">{outcome}</span>
-                  <button onClick={() => onUpdate({ outcomes: subsystem.outcomes.filter((_, idx) => idx !== i) })} className="text-gray-500 hover:text-red-400">
+                  <button onClick={() => onUpdate({ outcomes: subsystem.outcomes.filter((_: string, idx: number) => idx !== i) })} className="text-gray-500 hover:text-red-400">
                     <X size={14} />
                   </button>
                 </div>
@@ -1463,7 +1554,7 @@ function SubsystemItem({
 }
 
 // Milestones Editor
-function MilestonesEditor({ project, onUpdate }: { project: Project; onUpdate: (updates: Partial<Project>) => void }) {
+function MilestonesEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const addMilestone = () => {
     onUpdate({ milestones: [...project.milestones, createEmptyMilestone()] });
   };
@@ -1556,7 +1647,7 @@ function MilestonesEditor({ project, onUpdate }: { project: Project; onUpdate: (
 }
 
 // CAD Model Editor - Upload GLB/GLTF and tag parts
-function CADModelEditor({ project, onUpdate }: { project: Project; onUpdate: (updates: Partial<Project>) => void }) {
+function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const [isTaggingMode, setIsTaggingMode] = useState(false);
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [editingPart, setEditingPart] = useState<TaggedPart | null>(null);
@@ -2038,7 +2129,7 @@ function TaggedPartEditor({
 }
 
 // Images Editor - Upload project images
-function ImagesEditor({ project, onUpdate }: { project: Project; onUpdate: (updates: Partial<Project>) => void }) {
+function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const images = project.images || [];
 
   const handleImageAdd = useCallback((file: File, dataUrl: string) => {
@@ -2148,7 +2239,7 @@ function ImagesEditor({ project, onUpdate }: { project: Project; onUpdate: (upda
 }
 
 // Export Preview
-function ExportPreview({ project }: { project: Project }) {
+function ExportPreview({ project, lightMode }: { project: Project; lightMode: boolean }) {
   return (
     <div className="space-y-4">
       <p className="text-gray-400">Preview of the JSON data for this project</p>

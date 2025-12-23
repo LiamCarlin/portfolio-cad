@@ -101,9 +101,22 @@ export default function CADLayout() {
   // Initialize theme on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('portfoliocad-theme') as 'dark' | 'light' | null;
-    const initialTheme = savedTheme || 'dark';
+    
+    let initialTheme = savedTheme;
+    
+    // If no saved theme, check system preference
+    if (!initialTheme) {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        initialTheme = prefersDark ? 'dark' : 'light';
+      } else {
+        initialTheme = 'light'; // Fallback to light
+      }
+    }
+    
     setTheme(initialTheme);
     document.documentElement.classList.add(initialTheme);
+    document.documentElement.classList.remove(initialTheme === 'dark' ? 'light' : 'dark');
   }, [setTheme]);
 
   // Resize handlers - use refs to avoid stale closure issues
