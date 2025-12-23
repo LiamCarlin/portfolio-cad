@@ -1119,11 +1119,13 @@
         "label": "GitHub"
       }
     ],
+    "bannerImageUrl": "uploads/welcome-banner.jpg",
+    "profileImageId": "profile-1766519216997",
     "bannerDarkness": 60,
     "aboutTitle": "About This Portfolio",
     "aboutContent": "I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment.",
     "bannerImageId": "banner-1766476455151",
-    "bannerImageUrl": "uploads/welcome-banner.jpg"
+    "profileImageUrl": "uploads/profile.png"
   },
-  "savedAt": "2025-12-23T07:54:49.655Z"
+  "savedAt": "2025-12-23T19:47:06.238Z"
 }
