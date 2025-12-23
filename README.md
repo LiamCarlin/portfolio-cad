@@ -75,8 +75,6 @@ Instead of a traditional scrolling portfolio, visitors experience your work thro
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18.x or higher
-- npm or yarn
 
 ### Installation
 
@@ -93,6 +91,37 @@ npm run dev
 # Open in browser
 open http://localhost:3000
 ```
+
+## Saving Content and Deploying
+
+This project is designed to let you edit content locally on the Admin page and then deploy those changes as static files to GitHub Pages.
+
+- Where files are saved:
+  - Data JSON: public/data/siteData.json
+  - Uploaded images: public/uploads/
+
+- How it works:
+  - Use the Admin page locally to make edits and click Save. This writes files into the paths above.
+  - Commit the modified files and push to main. A GitHub Action builds and deploys to Pages.
+
+- Commands to commit your changes:
+
+```bash
+git add public/data/siteData.json public/uploads
+git commit -m "Update site data and uploads from admin"
+git push origin main
+```
+
+- Deployment config: .github/workflows/deploy.yml builds a static export and deploys it to GitHub Pages. It also sets NEXT_PUBLIC_BASE_PATH to "/<repo>" so assets load correctly on project pages.
+
+- If you use a user/organization site (e.g. <username>.github.io), set NEXT_PUBLIC_BASE_PATH to an empty string in the workflow env:
+
+```yaml
+env:
+  NEXT_PUBLIC_BASE_PATH: ""
+```
+
+After pushing to main, GitHub Pages will update automatically.
 
 ### Build for Production
 

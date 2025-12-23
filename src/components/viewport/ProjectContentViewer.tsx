@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import {
   FileText,
   User,
@@ -134,7 +135,7 @@ export default function ProjectContentViewer({ project, lightMode = false }: Pro
           {(project.thumbnailFile || project.thumbnail) && (
             <div className="mb-6">
               <img 
-                src={project.thumbnailFile || project.thumbnail} 
+                src={project.thumbnailFile || resolvePublicUrl(project.thumbnail)} 
                 alt={project.name}
                 className="w-full h-64 object-cover rounded-xl shadow-lg"
               />

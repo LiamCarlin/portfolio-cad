@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { usePortfolioStore, Project } from '@/store/usePortfolioStore';
 import { getImageDataUrl } from '@/lib/imageStorage';
+import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 
 const categoryIcons = {
   robotics: Cpu,
@@ -42,7 +43,8 @@ function ProjectCard({ project, onClick, lightMode }: { project: Project; onClic
   const accentClass = categoryAccent[project.category];
   
   // Get thumbnail - use project thumbnail, first image, or placeholder
-  const thumbnail = project.thumbnailFile || project.thumbnail || 
+  const baseResolvedThumb = resolvePublicUrl(project.thumbnail);
+  const thumbnail = project.thumbnailFile || baseResolvedThumb || 
     (project.images && project.images.length > 0 ? project.images[0].data : null);
   
   return (
@@ -151,7 +153,8 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   useEffect(() => {
     const load = async () => {
       if (welcomePageData.bannerImageUrl) {
-        setBannerImageData(welcomePageData.bannerImageUrl);
+        const url = resolvePublicUrl(welcomePageData.bannerImageUrl) || null;
+        setBannerImageData(url);
         setIsLoadingBanner(false);
         return;
       }

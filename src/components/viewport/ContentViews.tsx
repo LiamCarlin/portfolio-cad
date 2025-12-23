@@ -28,6 +28,7 @@ import {
 import { usePortfolioStore, Project, ContentBlock, Milestone } from '@/store/usePortfolioStore';
 import { EditButton } from '@/components/admin/UserMenu';
 import { ProjectDetailsEditor, ContentBlockEditor, MilestoneEditor } from '@/components/admin/InlineEditors';
+import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 
 // Content Block Renderer
 function ContentBlockView({ block, lightMode }: { block: ContentBlock; lightMode: boolean }) {
@@ -184,7 +185,7 @@ export function ProjectContentView({ project, lightMode }: { project: Project; l
           
           {(project.thumbnailFile || project.thumbnail) && (
             <img
-              src={project.thumbnailFile || project.thumbnail}
+              src={project.thumbnailFile || resolvePublicUrl(project.thumbnail)}
               alt={project.name}
               className="w-full h-64 object-cover rounded-xl mb-6 shadow-lg"
             />

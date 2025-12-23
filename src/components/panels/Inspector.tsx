@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import {
   ChevronLeft,
   ExternalLink,
@@ -245,7 +246,7 @@ function ProjectOverview({ project, lightMode }: { project: any; lightMode: bool
       {(project.thumbnailFile || project.thumbnail) && (
         <div className="mb-4">
           <img 
-            src={project.thumbnailFile || project.thumbnail} 
+            src={project.thumbnailFile || resolvePublicUrl(project.thumbnail)} 
             alt={project.name}
             className="w-full h-32 object-cover rounded-lg"
           />

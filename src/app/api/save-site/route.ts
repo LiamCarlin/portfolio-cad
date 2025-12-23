@@ -32,13 +32,14 @@ const dataUrlToBuffer = (dataUrl: string) => {
   return { buffer, ext };
 };
 
-const writeImageFromDataUrl = async (uploadsDir: string, dataUrl: string, filenameBase: string, basePath: string) => {
+const writeImageFromDataUrl = async (uploadsDir: string, dataUrl: string, filenameBase: string) => {
   const parsed = dataUrlToBuffer(dataUrl);
   if (!parsed) return null;
   const filename = `${filenameBase}.${parsed.ext}`;
   const filePath = path.join(uploadsDir, filename);
   await fs.writeFile(filePath, parsed.buffer);
-  return `${basePath}/uploads/${filename}`;
+  // Return relative path so the client can resolve with basePath
+  return `uploads/${filename}`;
 };
 
 export async function POST(request: Request) {
@@ -53,7 +54,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'welcomePageData is required' }, { status: 400 });
     }
 
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
     const uploadsDir = await ensureUploadsDir();
 
     // Process projects: move inline images to files
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
       // Thumbnail
       if (clone.thumbnailFile && typeof clone.thumbnailFile === 'string' && clone.thumbnailFile.startsWith('data:')) {
-        const url = await writeImageFromDataUrl(uploadsDir, clone.thumbnailFile, `project-${proj.id}-thumb`, basePath);
+        const url = await writeImageFromDataUrl(uploadsDir, clone.thumbnailFile, `project-${proj.id}-thumb`);
         if (url) {
           clone.thumbnail = url;
           clone.thumbnailFile = undefined;
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       if (Array.isArray(clone.images)) {
         clone.images = await Promise.all((clone.images as UploadedImageLike[]).map(async (img, i) => {
           if (img?.data && img.data.startsWith('data:')) {
-            const url = await writeImageFromDataUrl(uploadsDir, img.data, `project-${proj.id}-img-${i}`, basePath);
+            const url = await writeImageFromDataUrl(uploadsDir, img.data, `project-${proj.id}-img-${i}`);
             return { ...img, url, data: undefined };
           }
           return img;
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     // Process banner image if provided
     const processedWelcome = { ...welcomePageData };
     if (bannerImageData && typeof bannerImageData === 'string' && bannerImageData.startsWith('data:')) {
-      const url = await writeImageFromDataUrl(uploadsDir, bannerImageData, 'welcome-banner', basePath);
+      const url = await writeImageFromDataUrl(uploadsDir, bannerImageData, 'welcome-banner');
       if (url) {
         processedWelcome.bannerImageUrl = url;
       }
