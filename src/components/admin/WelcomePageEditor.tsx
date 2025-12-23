@@ -11,12 +11,14 @@ interface WelcomePageEditorProps {
 }
 
 export function WelcomePageEditor({ isOpen = true, onClose }: WelcomePageEditorProps) {
-  const { welcomePageData, updateWelcomePageData, setBannerImageId, theme } = usePortfolioStore();
+  const { welcomePageData, updateWelcomePageData, setBannerImageId, setProfileImageId, theme } = usePortfolioStore();
   const lightMode = theme === 'light';
   
   const [formData, setFormData] = useState(welcomePageData);
   const [bannerImagePreview, setBannerImagePreview] = useState<string | null>(null);
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   
   // Load banner image preview on mount and when store updates
   useEffect(() => {
@@ -39,6 +41,25 @@ export function WelcomePageEditor({ isOpen = true, onClose }: WelcomePageEditorP
         });
     } else {
       setBannerImagePreview(null);
+    }
+    
+    // Load profile image from IndexedDB if it exists
+    if (welcomePageData.profileImageId) {
+      setIsLoadingProfile(true);
+      getImage(welcomePageData.profileImageId)
+        .then((image) => {
+          if (image) {
+            setProfileImagePreview(image.data);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load profile image:', err);
+        })
+        .finally(() => {
+          setIsLoadingProfile(false);
+        });
+    } else {
+      setProfileImagePreview(null);
     }
   }, [welcomePageData]);
   
@@ -138,7 +159,55 @@ export function WelcomePageEditor({ isOpen = true, onClose }: WelcomePageEditorP
     }
   };
 
-  const handleSocialIconUpload = (linkId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Warning: Profile image is larger than 5MB. Consider using a smaller image.');
+        }
+        
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          const dataUrl = event.target?.result as string;
+          const imageId = `profile-${Date.now()}`;
+          try {
+            await saveImage(imageId, dataUrl, file.name);
+            setProfileImageId(imageId);
+            setProfileImagePreview(dataUrl);
+            setFormData({
+              ...formData,
+              profileImageId: imageId,
+            });
+          } catch (err) {
+            console.error('Failed to save profile image:', err);
+            alert('Failed to save profile image. It may be too large.');
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Error uploading profile:', err);
+        alert('Failed to upload profile image.');
+      }
+    }
+  };
+
+  const handleRemoveProfile = async () => {
+    if (formData.profileImageId) {
+      try {
+        setProfileImageId(undefined);
+        setProfileImagePreview(null);
+        setFormData({
+          ...formData,
+          profileImageId: undefined,
+        });
+      } catch (err) {
+        console.error('Failed to remove profile:', err);
+      }
+    }
+  };
+
+    const handleSocialIconUpload = (linkId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -314,6 +383,57 @@ export function WelcomePageEditor({ isOpen = true, onClose }: WelcomePageEditorP
           </div>
         </div>
         
+        {/* Profile Picture */}
+        <div className={`p-4 rounded-lg ${lightMode ? 'bg-gray-50 border border-gray-200' : 'bg-gray-800 border border-gray-700'}`}>
+          <h3 className={`text-lg font-bold mb-4 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+            Profile Picture
+          </h3>
+          
+          <div className="space-y-3">
+            {profileImagePreview && !isLoadingProfile && (
+              <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-dashed border-gray-500">
+                <img 
+                  src={profileImagePreview} 
+                  alt="Profile preview"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={handleRemoveProfile}
+                  className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full transition-colors"
+                  title="Remove profile picture"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            
+            {isLoadingProfile && (
+              <div className="w-32 h-32 rounded-full bg-gray-700 flex items-center justify-center">
+                <span className="text-gray-400 text-xs">Loading...</span>
+              </div>
+            )}
+            
+            <div>
+              <label className={`block text-sm font-medium mb-2 cursor-pointer flex items-center gap-2 ${lightMode ? 'text-gray-600 hover:text-blue-600' : 'text-gray-400 hover:text-blue-400'} transition-colors`}>
+                <Upload size={16} />
+                {profileImagePreview ? 'Change Profile Picture' : 'Upload Profile Picture'}
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProfileUpload}
+                className="hidden"
+                id="profile-upload"
+              />
+              <label htmlFor="profile-upload" className={`block p-3 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${lightMode ? 'border-gray-300 hover:border-blue-400 hover:bg-blue-50' : 'border-gray-600 hover:border-blue-400 hover:bg-gray-700'}`}>
+                <span className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                  Click to upload or drag and drop
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
         {/* Social Links */}
         <div className={`p-4 rounded-lg ${lightMode ? 'bg-gray-50 border border-gray-200' : 'bg-gray-800 border border-gray-700'}`}>
           <h3 className={`text-lg font-bold mb-4 ${lightMode ? 'text-gray-900' : 'text-white'}`}>

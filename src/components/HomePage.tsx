@@ -209,11 +209,18 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             {/* Avatar */}
             <div className="relative">
-              <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${lightMode ? 'bg-gray-200' : 'bg-gray-800'} flex items-center justify-center overflow-hidden`}>
-                {/* Replace with actual avatar */}
-                <span className={`text-5xl md:text-6xl font-bold ${lightMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {welcomePageData.name.split(' ').map(n => n[0]).join('')}
-                </span>
+              <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${lightMode ? 'bg-gray-200' : 'bg-gray-800'} flex items-center justify-center overflow-hidden flex-shrink-0`}>
+                {welcomePageData.profileImageUrl ? (
+                  <img 
+                    src={resolvePublicUrl(welcomePageData.profileImageUrl) || welcomePageData.profileImageUrl}
+                    alt={welcomePageData.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className={`text-5xl md:text-6xl font-bold ${lightMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {welcomePageData.name.split(' ').map(n => n[0]).join('')}
+                  </span>
+                )}
               </div>
               {/* Status indicator */}
               <div className={`absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 ${lightMode ? 'border-gray-100' : 'border-gray-900'}`} title="Available for opportunities" />

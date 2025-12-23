@@ -230,6 +230,10 @@ export interface WelcomePageData {
   bannerImageUrl?: string; // Public URL for exported static site
   bannerDarkness: number; // 0-100, percentage of darkness overlay on banner image
   
+  // Profile picture
+  profileImageId?: string; // ID reference to profile image in IndexedDB
+  profileImageUrl?: string; // Public URL for exported static site
+  
   // About section
   aboutTitle: string;
   aboutContent: string;
@@ -349,6 +353,7 @@ interface PortfolioState {
   // Welcome page actions
   updateWelcomePageData: (updates: Partial<WelcomePageData>) => void;
   setBannerImageId: (imageId: string | undefined) => void;
+  setProfileImageId: (imageId: string | undefined) => void;
 }
 
 // Helper to find subsystem in nested structure
@@ -428,6 +433,8 @@ export const usePortfolioStore = create<PortfolioState>()(
           { id: '3', platform: 'github', url: 'https://github.com/liamcarlin', label: 'GitHub' },
         ],
         bannerImageUrl: undefined,
+        profileImageId: undefined,
+        profileImageUrl: undefined,
         bannerDarkness: 30, // Default 30% darkness for better text readability
         aboutTitle: 'About This Portfolio',
         aboutContent: 'I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment.',
@@ -767,6 +774,15 @@ export const usePortfolioStore = create<PortfolioState>()(
           welcomePageData: {
             ...state.welcomePageData,
             bannerImageId: imageId,
+          },
+        }));
+      },
+
+      setProfileImageId: (imageId: string | undefined) => {
+        set((state) => ({
+          welcomePageData: {
+            ...state.welcomePageData,
+            profileImageId: imageId,
           },
         }));
       },

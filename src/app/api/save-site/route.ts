@@ -45,7 +45,7 @@ const writeImageFromDataUrl = async (uploadsDir: string, dataUrl: string, filena
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { projects, welcomePageData, bannerImageData } = body ?? {};
+    const { projects, welcomePageData, bannerImageData, profileImageData } = body ?? {};
 
     if (!projects || !Array.isArray(projects)) {
       return NextResponse.json({ error: 'projects must be an array' }, { status: 400 });
@@ -90,6 +90,14 @@ export async function POST(request: Request) {
       const url = await writeImageFromDataUrl(uploadsDir, bannerImageData, 'welcome-banner');
       if (url) {
         processedWelcome.bannerImageUrl = url;
+      }
+    }
+
+    // Process profile image if provided
+    if (profileImageData && typeof profileImageData === 'string' && profileImageData.startsWith('data:')) {
+      const url = await writeImageFromDataUrl(uploadsDir, profileImageData, 'profile');
+      if (url) {
+        processedWelcome.profileImageUrl = url;
       }
     }
 

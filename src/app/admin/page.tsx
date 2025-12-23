@@ -362,10 +362,20 @@ export default function AdminPage() {
         }
       }
 
+      let profileImageData: string | undefined;
+      if (welcomePageData.profileImageId) {
+        try {
+          const dataUrl = await getImageDataUrl(welcomePageData.profileImageId);
+          profileImageData = dataUrl || undefined;
+        } catch (e) {
+          console.warn('Could not load profile image from storage', e);
+        }
+      }
+
       const res = await fetch('/api/save-site', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projects, welcomePageData, bannerImageData }),
+        body: JSON.stringify({ projects, welcomePageData, bannerImageData, profileImageData }),
       });
       if (!res.ok) {
         throw new Error('Save failed');
