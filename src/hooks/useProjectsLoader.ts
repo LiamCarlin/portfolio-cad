@@ -22,8 +22,10 @@ export function useProjectsLoader() {
       let allProjects: Project[] = [...sampleProjects];
 
       // Try to load from generated data file first (created via admin save)
+      // Use basePath if set (for GitHub Pages deployment)
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
       try {
-        const res = await fetch('/data/siteData.json', { cache: 'no-store' });
+        const res = await fetch(`${basePath}/data/siteData.json`, { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           if (Array.isArray(json.projects)) {
