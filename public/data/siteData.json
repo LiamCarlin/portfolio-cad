@@ -1109,7 +1109,7 @@
       {
         "id": "2",
         "platform": "linkedin",
-        "url": "https://linkedin.com/in/liamcarlin",
+        "url": "https://linkedin.com/in/liamzcarlin",
         "label": "LinkedIn"
       },
       {
@@ -1119,11 +1119,11 @@
         "label": "GitHub"
       }
     ],
-    "bannerImageUrl": "/uploads/welcome-banner.jpg",
-    "bannerDarkness": 60,
+    "bannerDarkness": 65,
     "aboutTitle": "About This Portfolio",
     "aboutContent": "I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment.",
-    "bannerOverlayOpacity": 0.3
+    "bannerImageId": "banner-1766472552574",
+    "bannerImageUrl": "/uploads/welcome-banner.jpg"
   },
-  "savedAt": "2025-12-23T06:26:50.495Z"
+  "savedAt": "2025-12-23T06:49:19.993Z"
 }
