@@ -147,25 +147,31 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   // Always use dark mode until hydration completes to prevent flash
   const lightMode = isHydrated ? theme === 'light' : false;
   
-  // Load banner image from IndexedDB
+  // Load banner image: prefer exported URL, fall back to IndexedDB
   useEffect(() => {
-    if (welcomePageData.bannerImageId) {
-      setIsLoadingBanner(true);
-      getImageDataUrl(welcomePageData.bannerImageId)
-        .then((dataUrl) => {
+    const load = async () => {
+      if (welcomePageData.bannerImageUrl) {
+        setBannerImageData(welcomePageData.bannerImageUrl);
+        setIsLoadingBanner(false);
+        return;
+      }
+      if (welcomePageData.bannerImageId) {
+        setIsLoadingBanner(true);
+        try {
+          const dataUrl = await getImageDataUrl(welcomePageData.bannerImageId);
           setBannerImageData(dataUrl);
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error('Failed to load banner image:', err);
           setBannerImageData(null);
-        })
-        .finally(() => {
+        } finally {
           setIsLoadingBanner(false);
-        });
-    } else {
-      setBannerImageData(null);
-    }
-  }, [welcomePageData.bannerImageId]);
+        }
+      } else {
+        setBannerImageData(null);
+      }
+    };
+    load();
+  }, [welcomePageData.bannerImageId, welcomePageData.bannerImageUrl]);
   
   return (
     <div className={`min-h-screen ${lightMode ? 'bg-gray-100' : 'bg-gray-950'}`}>

@@ -34,6 +34,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { FileUpload, MultiImageUpload, ImagePreview } from '@/components/admin/FileUpload';
 import { sampleProjects } from '@/data/sampleProjects';
+import { getImageDataUrl } from '@/lib/imageStorage';
 
 // Dynamically import CAD viewer to avoid SSR issues
 const CADModelViewer = dynamic(
@@ -322,10 +323,20 @@ export default function AdminPage() {
   const saveToFiles = async () => {
     setSaveStatus('saving');
     try {
+      let bannerImageData: string | undefined;
+      if (welcomePageData.bannerImageId) {
+        try {
+          const dataUrl = await getImageDataUrl(welcomePageData.bannerImageId);
+          bannerImageData = dataUrl || undefined;
+        } catch (e) {
+          console.warn('Could not load banner image from storage', e);
+        }
+      }
+
       const res = await fetch('/api/save-site', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projects, welcomePageData }),
+        body: JSON.stringify({ projects, welcomePageData, bannerImageData }),
       });
       if (!res.ok) {
         throw new Error('Save failed');

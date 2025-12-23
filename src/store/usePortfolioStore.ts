@@ -227,6 +227,7 @@ export interface WelcomePageData {
   
   // Banner
   bannerImageId?: string; // ID reference to image stored in IndexedDB (not base64 to avoid localStorage quota)
+  bannerImageUrl?: string; // Public URL for exported static site
   bannerDarkness: number; // 0-100, percentage of darkness overlay on banner image
   
   // About section
@@ -426,6 +427,7 @@ export const usePortfolioStore = create<PortfolioState>()(
           { id: '2', platform: 'linkedin', url: 'https://linkedin.com/in/liamzcarlin', label: 'LinkedIn' },
           { id: '3', platform: 'github', url: 'https://github.com/liamcarlin', label: 'GitHub' },
         ],
+        bannerImageUrl: undefined,
         bannerDarkness: 30, // Default 30% darkness for better text readability
         aboutTitle: 'About This Portfolio',
         aboutContent: 'I built this interactive portfolio to showcase my engineering work in a way that goes beyond traditional resumes and static images. Each project features fully interactive 3D CAD models that you can explore, rotate, and examine in detail—just like reviewing actual designs in a professional CAD environment.',
