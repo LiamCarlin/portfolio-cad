@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect, Suspense } from 'react';
-import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
+import React, { useState, useRef, useCallback, useEffect, useMemo, Suspense } from 'react';
+import { Canvas, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Html, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { 
@@ -16,8 +16,6 @@ import {
   Triangle,
   Cylinder,
   ArrowUp,
-  Move,
-  RotateCw,
 } from 'lucide-react';
 import { CADAnnotation, Subsystem, Project, CADModel, AnnotationShape, AnnotationDimensions } from '@/store/usePortfolioStore';
 
@@ -41,6 +39,13 @@ interface SubsystemCADAnnotatorProps {
   project: Project;
   subsystem: Subsystem;
   onUpdateAnnotations: (annotations: CADAnnotation[]) => void;
+}
+
+interface ModelMeshInfo {
+  mesh: THREE.Mesh;
+  name: string;
+  index: number;
+  worldBox: THREE.Box3;
 }
 
 // Shape icons mapping
@@ -99,6 +104,152 @@ function ShapeGeometry({ shape, dimensions, fallbackSize }: {
   }
 }
 
+function getAnnotationDimensions(annotation: CADAnnotation): AnnotationDimensions {
+  const fallbackSize = annotation.size ?? 0.02;
+  if (annotation.dimensions && Object.keys(annotation.dimensions).length > 0) {
+    return annotation.dimensions;
+  }
+  return getDefaultDimensions(annotation.shape, fallbackSize);
+}
+
+function getShapeBounds(annotation: CADAnnotation): THREE.Box3 {
+  const dims = getAnnotationDimensions(annotation);
+  const [x, y, z] = annotation.position;
+  const center = new THREE.Vector3(x, y, z);
+  const box = new THREE.Box3();
+
+  switch (annotation.shape) {
+    case 'sphere': {
+      const radius = dims.radius ?? annotation.size ?? 0.02;
+      box.setFromCenterAndSize(center, new THREE.Vector3(radius * 2, radius * 2, radius * 2));
+      return box;
+    }
+    case 'cube': {
+      const width = dims.width ?? (annotation.size ?? 0.02) * 2;
+      const height = dims.height ?? (annotation.size ?? 0.02) * 2;
+      const depth = dims.depth ?? (annotation.size ?? 0.02) * 2;
+      box.setFromCenterAndSize(center, new THREE.Vector3(width, height, depth));
+      return box;
+    }
+    case 'cylinder': {
+      const radius = dims.radius ?? dims.radiusTop ?? dims.radiusBottom ?? annotation.size ?? 0.02;
+      const height = dims.height ?? (annotation.size ?? 0.02) * 2;
+      box.setFromCenterAndSize(center, new THREE.Vector3(radius * 2, height, radius * 2));
+      return box;
+    }
+    case 'cone': {
+      const radius = dims.radiusBottom ?? annotation.size ?? 0.02;
+      const height = dims.height ?? (annotation.size ?? 0.02) * 2;
+      box.setFromCenterAndSize(center, new THREE.Vector3(radius * 2, height, radius * 2));
+      return box;
+    }
+    case 'ring': {
+      const radius = (dims.ringRadius ?? annotation.size ?? 0.02) + (dims.tubeRadius ?? (annotation.size ?? 0.02) * 0.3);
+      box.setFromCenterAndSize(center, new THREE.Vector3(radius * 2, radius * 2, radius * 2));
+      return box;
+    }
+    case 'arrow':
+    default: {
+      const radius = dims.radiusBottom ?? annotation.size ?? 0.02;
+      const height = dims.height ?? (annotation.size ?? 0.02) * 2.5;
+      box.setFromCenterAndSize(center, new THREE.Vector3(radius * 2, height, radius * 2));
+      return box;
+    }
+  }
+}
+
+function isPointInsideShape(point: THREE.Vector3, annotation: CADAnnotation): boolean {
+  const dims = getAnnotationDimensions(annotation);
+  const [x, y, z] = annotation.position;
+  const dx = point.x - x;
+  const dy = point.y - y;
+  const dz = point.z - z;
+
+  switch (annotation.shape) {
+    case 'sphere': {
+      const radius = dims.radius ?? annotation.size ?? 0.02;
+      return dx * dx + dy * dy + dz * dz <= radius * radius;
+    }
+    case 'cube': {
+      const halfX = (dims.width ?? (annotation.size ?? 0.02) * 2) / 2;
+      const halfY = (dims.height ?? (annotation.size ?? 0.02) * 2) / 2;
+      const halfZ = (dims.depth ?? (annotation.size ?? 0.02) * 2) / 2;
+      return Math.abs(dx) <= halfX && Math.abs(dy) <= halfY && Math.abs(dz) <= halfZ;
+    }
+    case 'cylinder': {
+      const radius = dims.radius ?? dims.radiusTop ?? dims.radiusBottom ?? annotation.size ?? 0.02;
+      const height = dims.height ?? (annotation.size ?? 0.02) * 2;
+      const halfY = height / 2;
+      if (Math.abs(dy) > halfY) return false;
+      return dx * dx + dz * dz <= radius * radius;
+    }
+    case 'cone': {
+      const radiusBottom = dims.radiusBottom ?? annotation.size ?? 0.02;
+      const radiusTop = dims.radiusTop ?? 0;
+      const height = dims.height ?? (annotation.size ?? 0.02) * 2;
+      const halfY = height / 2;
+      const yPos = dy + halfY;
+      if (yPos < 0 || yPos > height) return false;
+      const t = height === 0 ? 0 : yPos / height;
+      const radiusAtY = radiusBottom + (radiusTop - radiusBottom) * t;
+      return dx * dx + dz * dz <= radiusAtY * radiusAtY;
+    }
+    case 'ring':
+    case 'arrow':
+    default:
+      return getShapeBounds(annotation).containsPoint(point);
+  }
+}
+
+function getSelectedMeshesForAnnotation(annotation: CADAnnotation, meshes: ModelMeshInfo[]): { names: string[]; indices: number[] } {
+  const names: string[] = [];
+  const indices: number[] = [];
+  if (meshes.length === 0) return { names, indices };
+
+  const shapeBounds = getShapeBounds(annotation);
+  const temp = new THREE.Vector3();
+  const maxSamples = 5000;
+
+  for (const info of meshes) {
+    if (!shapeBounds.intersectsBox(info.worldBox)) continue;
+    const geometry = info.mesh.geometry as THREE.BufferGeometry;
+    const position = geometry.attributes.position as THREE.BufferAttribute | undefined;
+
+    if (!position) {
+      names.push(info.name);
+      indices.push(info.index);
+      continue;
+    }
+
+    const stride = Math.max(1, Math.floor(position.count / maxSamples));
+    let inside = false;
+    for (let i = 0; i < position.count; i += stride) {
+      temp.set(position.getX(i), position.getY(i), position.getZ(i)).applyMatrix4(info.mesh.matrixWorld);
+      if (isPointInsideShape(temp, annotation)) {
+        inside = true;
+        break;
+      }
+    }
+
+    if (inside) {
+      names.push(info.name);
+      indices.push(info.index);
+    }
+  }
+
+  return { names, indices };
+}
+
+function arraysEqual<T>(a?: T[], b?: T[]): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 // Dimension input component
 function DimensionInput({ 
   label, 
@@ -126,6 +277,34 @@ function DimensionInput({
         step={step}
         min={min}
         className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs font-mono"
+      />
+    </div>
+  );
+}
+
+function NumberInput({
+  label,
+  value,
+  onChange,
+  step = 0.001,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-400 w-16">{label}:</span>
+      <input
+        type="number"
+        value={Number.isFinite(value) ? value.toFixed(3) : '0.000'}
+        onChange={(e) => {
+          const v = parseFloat(e.target.value);
+          if (!Number.isNaN(v)) onChange(v);
+        }}
+        step={step}
+        className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs font-mono"
       />
     </div>
   );
@@ -206,7 +385,6 @@ function Marker3D({
   onClick,
   onDelete,
   onTransformChange,
-  transformMode,
   orbitControlsRef,
 }: { 
   annotation: CADAnnotation;
@@ -214,7 +392,6 @@ function Marker3D({
   onClick: () => void;
   onDelete: () => void;
   onTransformChange: (position: [number, number, number], rotation: [number, number, number]) => void;
-  transformMode: 'translate' | 'rotate';
   orbitControlsRef: React.RefObject<any>;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -304,7 +481,7 @@ function Marker3D({
         <TransformControls
           ref={transformRef}
           object={meshRef.current}
-          mode={transformMode}
+          mode="translate"
           size={0.5}
         />
       )}
@@ -345,7 +522,7 @@ function Marker3D({
               onDelete();
             }}
             className="bg-red-600 hover:bg-red-500 text-white p-1 rounded-full shadow-lg"
-            title="Delete marker"
+            title="Delete volume"
           >
             <Trash2 size={12} />
           </button>
@@ -369,8 +546,8 @@ function AnnotatableModel({
   subsystemColor,
   subsystemName,
   onAddAnnotation,
-  transformMode,
   orbitControlsRef,
+  onModelMeshes,
 }: {
   url: string;
   annotations: CADAnnotation[];
@@ -384,11 +561,13 @@ function AnnotatableModel({
   subsystemColor: string;
   subsystemName: string;
   onAddAnnotation: (position: [number, number, number], normal: [number, number, number], meshName?: string) => void;
-  transformMode: 'translate' | 'rotate';
   orbitControlsRef: React.RefObject<any>;
+  onModelMeshes?: (meshes: ModelMeshInfo[]) => void;
 }) {
   const { scene } = useGLTF(url);
   const modelRef = useRef<THREE.Group>(null);
+  const [hoverPoint, setHoverPoint] = useState<[number, number, number] | null>(null);
+  const [hoverNormal, setHoverNormal] = useState<[number, number, number] | null>(null);
   
   // Clone the scene to avoid modifying the cached original
   const clonedScene = React.useMemo(() => {
@@ -400,6 +579,37 @@ function AnnotatableModel({
     });
     return clone;
   }, [scene]);
+
+  const meshInfos = useMemo(() => {
+    const infos: ModelMeshInfo[] = [];
+    let index = 0;
+    clonedScene.updateMatrixWorld(true);
+    clonedScene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const geometry = child.geometry as THREE.BufferGeometry;
+        if (!geometry.boundingBox) {
+          geometry.computeBoundingBox();
+        }
+        const worldBox = geometry.boundingBox
+          ? geometry.boundingBox.clone().applyMatrix4(child.matrixWorld)
+          : new THREE.Box3();
+        infos.push({
+          mesh: child,
+          name: child.name || `mesh-${index}`,
+          index,
+          worldBox,
+        });
+        index += 1;
+      }
+    });
+    return infos;
+  }, [clonedScene]);
+
+  useEffect(() => {
+    if (onModelMeshes) {
+      onModelMeshes(meshInfos);
+    }
+  }, [meshInfos, onModelMeshes]);
 
   // Handle click on the model to add annotation
   const handleClick = useCallback((event: ThreeEvent<MouseEvent>) => {
@@ -423,6 +633,25 @@ function AnnotatableModel({
     }
   }, [isAddMode, onAddAnnotation]);
 
+  const handlePointerMove = useCallback((event: ThreeEvent<MouseEvent>) => {
+    if (!isAddMode) return;
+    const point = event.point;
+    const face = event.face;
+    const object = event.object;
+    if (point && face) {
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(object.matrixWorld);
+      const worldNormal = face.normal.clone().applyMatrix3(normalMatrix).normalize();
+      setHoverPoint([point.x, point.y, point.z]);
+      setHoverNormal([worldNormal.x, worldNormal.y, worldNormal.z]);
+    }
+  }, [isAddMode]);
+
+  const handlePointerOut = useCallback(() => {
+    if (!isAddMode) return;
+    setHoverPoint(null);
+    setHoverNormal(null);
+  }, [isAddMode]);
+
   // Click on background to deselect
   const handleMiss = useCallback(() => {
     if (!isAddMode) {
@@ -430,7 +659,7 @@ function AnnotatableModel({
     }
   }, [isAddMode, onSelectAnnotation]);
 
-  // Handle transform change for a marker
+  // Handle transform change for a volume
   const handleTransformChange = useCallback((id: string, position: [number, number, number], rotation: [number, number, number]) => {
     onUpdateAnnotation(id, { position, rotation });
   }, [onUpdateAnnotation]);
@@ -441,10 +670,40 @@ function AnnotatableModel({
         ref={modelRef}
         object={clonedScene} 
         onClick={handleClick}
+        onPointerMove={handlePointerMove}
+        onPointerOut={handlePointerOut}
         onPointerMissed={handleMiss}
       />
       
-      {/* Render all annotation markers */}
+      {/* Ghost preview for placement */}
+      {isAddMode && hoverPoint && (
+        <mesh
+          position={[
+            hoverPoint[0] + (hoverNormal?.[0] ?? 0) * 0.002,
+            hoverPoint[1] + (hoverNormal?.[1] ?? 0) * 0.002,
+            hoverPoint[2] + (hoverNormal?.[2] ?? 0) * 0.002,
+          ]}
+          renderOrder={2}
+        >
+          <ShapeGeometry 
+            shape={currentShape} 
+            dimensions={currentDimensions}
+            fallbackSize={0.02} 
+          />
+          <meshStandardMaterial
+            color={subsystemColor}
+            transparent
+            opacity={0.25}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+            wireframe
+          />
+        </mesh>
+      )}
+
+      {/* Render all selection volumes */}
       {annotations.map((annotation) => (
         <Marker3D
           key={annotation.id}
@@ -453,7 +712,6 @@ function AnnotatableModel({
           onClick={() => onSelectAnnotation(annotation.id)}
           onDelete={() => onDeleteAnnotation(annotation.id)}
           onTransformChange={(pos, rot) => handleTransformChange(annotation.id, pos, rot)}
-          transformMode={transformMode}
           orbitControlsRef={orbitControlsRef}
         />
       ))}
@@ -471,6 +729,63 @@ function ModelLoading() {
   );
 }
 
+function SelectionHighlights({
+  meshes,
+  selectedIndices,
+  selectedNames,
+  color,
+  visible,
+}: {
+  meshes: ModelMeshInfo[];
+  selectedIndices: Set<number>;
+  selectedNames: Set<string>;
+  color: string;
+  visible: boolean;
+}) {
+  const material = useMemo(() => {
+    const mat = new THREE.MeshStandardMaterial({
+      color,
+      transparent: true,
+      opacity: 0.35,
+      emissive: new THREE.Color(color),
+      emissiveIntensity: 0.35,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+    });
+    return mat;
+  }, [color]);
+
+  useEffect(() => {
+    return () => {
+      material.dispose();
+    };
+  }, [material]);
+
+  if (!visible) return null;
+
+  const highlighted = meshes.filter(info => (
+    selectedIndices.has(info.index) || (info.name && selectedNames.has(info.name))
+  ));
+
+  if (highlighted.length === 0) return null;
+
+  return (
+    <group>
+      {highlighted.map((info) => (
+        <mesh
+          key={`${info.index}-${info.name}`}
+          geometry={info.mesh.geometry}
+          matrix={info.mesh.matrixWorld}
+          matrixAutoUpdate={false}
+          material={material}
+        />
+      ))}
+    </group>
+  );
+}
+
 // Main component
 export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnnotations }: SubsystemCADAnnotatorProps) {
   const [modelUrl, setModelUrl] = useState<string | null>(null);
@@ -479,10 +794,10 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
   const [annotations, setAnnotations] = useState<CADAnnotation[]>(subsystem.cadAnnotations || []);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [isAddMode, setIsAddMode] = useState(false);
-  const [showAnnotations, setShowAnnotations] = useState(true);
+  const [showVolumes, setShowVolumes] = useState(true);
   const [currentShape, setCurrentShape] = useState<AnnotationShape>('sphere');
   const [currentDimensions, setCurrentDimensions] = useState<AnnotationDimensions>(getDefaultDimensions('sphere'));
-  const [transformMode, setTransformMode] = useState<'translate' | 'rotate'>('translate');
+  const [modelMeshes, setModelMeshes] = useState<ModelMeshInfo[]>([]);
   const orbitControlsRef = useRef<any>(null);
 
   // Update default dimensions when shape changes
@@ -520,15 +835,36 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
     loadModel();
   }, [project.cadModel]);
 
-  // Sync annotations from props
+  const lastSubsystemIdRef = useRef<string | null>(null);
+  // Sync annotations only when switching subsystems to avoid jitter during edits
   useEffect(() => {
-    setAnnotations(subsystem.cadAnnotations || []);
-  }, [subsystem.cadAnnotations]);
+    if (lastSubsystemIdRef.current !== subsystem.id) {
+      lastSubsystemIdRef.current = subsystem.id;
+      setAnnotations(subsystem.cadAnnotations || []);
+      setSelectedAnnotationId(null);
+    }
+  }, [subsystem.id, subsystem.cadAnnotations]);
 
   // Notify parent of changes
   useEffect(() => {
     onUpdateAnnotations(annotations);
   }, [annotations, onUpdateAnnotations]);
+
+  const applySelectionIfNeeded = useCallback((annotation: CADAnnotation) => {
+    if (modelMeshes.length === 0) return annotation;
+    const selection = getSelectedMeshesForAnnotation(annotation, modelMeshes);
+    if (
+      arraysEqual(annotation.selectedMeshNames, selection.names) &&
+      arraysEqual(annotation.selectedMeshIndices, selection.indices)
+    ) {
+      return annotation;
+    }
+    return {
+      ...annotation,
+      selectedMeshNames: selection.names,
+      selectedMeshIndices: selection.indices,
+    };
+  }, [modelMeshes]);
 
   // Add a new annotation at the clicked point
   const handleAddAnnotation = useCallback((
@@ -549,16 +885,33 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
       label: subsystem.name,
     };
 
-    setAnnotations(prev => [...prev, newAnnotation]);
-    setSelectedAnnotationId(newAnnotation.id);
-  }, [subsystem.color, subsystem.name, currentShape, currentDimensions]);
+    const withSelection = applySelectionIfNeeded(newAnnotation);
+    setAnnotations(prev => [...prev, withSelection]);
+    setSelectedAnnotationId(withSelection.id);
+  }, [subsystem.color, subsystem.name, currentShape, currentDimensions, applySelectionIfNeeded]);
 
   // Update an annotation
   const handleUpdateAnnotation = useCallback((id: string, updates: Partial<CADAnnotation>) => {
-    setAnnotations(prev => prev.map(a => 
-      a.id === id ? { ...a, ...updates } : a
-    ));
-  }, []);
+    setAnnotations(prev => prev.map(a => {
+      if (a.id !== id) return a;
+      const next = { ...a, ...updates };
+      const shouldRecompute = !!updates.position || !!updates.dimensions || !!updates.shape;
+      return shouldRecompute ? applySelectionIfNeeded(next) : next;
+    }));
+  }, [applySelectionIfNeeded]);
+
+  useEffect(() => {
+    if (modelMeshes.length === 0) return;
+    setAnnotations(prev => {
+      let changed = false;
+      const next = prev.map(annotation => {
+        const updated = applySelectionIfNeeded(annotation);
+        if (updated !== annotation) changed = true;
+        return updated;
+      });
+      return changed ? next : prev;
+    });
+  }, [modelMeshes, applySelectionIfNeeded]);
 
   // Delete selected annotation
   const handleDeleteAnnotation = useCallback((id: string) => {
@@ -570,7 +923,7 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
 
   // Clear all annotations
   const handleClearAll = useCallback(() => {
-    if (window.confirm('Delete all markers for this subsystem?')) {
+    if (window.confirm('Delete all selection volumes for this subsystem?')) {
       setAnnotations([]);
       setSelectedAnnotationId(null);
     }
@@ -578,6 +931,14 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
 
   // Available shapes
   const shapes: AnnotationShape[] = ['sphere', 'cube', 'cylinder', 'cone', 'ring', 'arrow'];
+  const selectedMeshIndices = useMemo(
+    () => new Set(annotations.flatMap(a => a.selectedMeshIndices ?? [])),
+    [annotations]
+  );
+  const selectedMeshNames = useMemo(
+    () => new Set(annotations.flatMap(a => a.selectedMeshNames ?? [])),
+    [annotations]
+  );
 
   if (loading) {
     return (
@@ -599,6 +960,20 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
     <div className="space-y-3">
       {/* Toolbar Row 1 - Mode controls */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Select Mode */}
+        <button
+          onClick={() => setIsAddMode(false)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+            !isAddMode 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+          title="Select and move existing volumes"
+        >
+          <MousePointer size={16} />
+          Select
+        </button>
+
         {/* Add Mode Toggle */}
         <button
           onClick={() => {
@@ -610,53 +985,24 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
               ? 'bg-green-600 text-white' 
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
-          title={isAddMode ? 'Click anywhere on model to place marker' : 'Enable add mode'}
+          title={isAddMode ? 'Click anywhere on model to place a volume' : 'Enable add mode'}
         >
-          {isAddMode ? <Plus size={16} /> : <MousePointer size={16} />}
-          {isAddMode ? 'Click to Add' : 'Add Markers'}
+          <Plus size={16} />
+          {isAddMode ? 'Click to Place' : 'Add Selection'}
         </button>
-
-        {/* Transform Mode (only when not in add mode and has selection) */}
-        {!isAddMode && selectedAnnotationId && (
-          <div className="flex items-center gap-1 bg-gray-800 rounded p-1">
-            <button
-              onClick={() => setTransformMode('translate')}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                transformMode === 'translate'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-              title="Move marker"
-            >
-              <Move size={14} />
-              Move
-            </button>
-            <button
-              onClick={() => setTransformMode('rotate')}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
-                transformMode === 'rotate'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-              title="Rotate marker"
-            >
-              <RotateCw size={14} />
-              Rotate
-            </button>
-          </div>
-        )}
 
         {/* Toggle visibility */}
         <button
-          onClick={() => setShowAnnotations(!showAnnotations)}
+          onClick={() => setShowVolumes(!showVolumes)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors ${
-            showAnnotations 
+            showVolumes 
               ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
               : 'bg-gray-800 text-gray-500'
           }`}
-          title={showAnnotations ? 'Hide markers' : 'Show markers'}
+          title={showVolumes ? 'Hide selection volumes' : 'Show selection volumes'}
         >
-          {showAnnotations ? <Eye size={16} /> : <EyeOff size={16} />}
+          {showVolumes ? <Eye size={16} /> : <EyeOff size={16} />}
+          Volumes
         </button>
 
         {/* Clear all */}
@@ -664,7 +1010,7 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
           onClick={handleClearAll}
           disabled={annotations.length === 0}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title="Clear all markers"
+          title="Clear all volumes"
         >
           <RotateCcw size={16} />
           Clear
@@ -697,7 +1043,7 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
             </span>
           </div>
           
-          {/* Dimensions for new markers */}
+          {/* Dimensions for new volumes */}
           <div className="border-t border-gray-700 pt-2">
             <div className="text-xs text-gray-400 mb-2">Dimensions (units):</div>
             <DimensionEditor 
@@ -712,18 +1058,18 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
       {/* Instructions */}
       {isAddMode && (
         <div className="bg-green-900/30 border border-green-700/50 rounded px-3 py-2 text-sm text-green-300">
-          <strong>Add Mode:</strong> Click on the 3D model to place a <strong>{currentShape}</strong> marker with the specified dimensions.
+          <strong>Add Mode:</strong> Click on the 3D model to place a <strong>{currentShape}</strong> selection volume.
         </div>
       )}
 
       {selectedAnnotationId && !isAddMode && (
         <div className="bg-blue-900/30 border border-blue-700/50 rounded px-3 py-2 text-sm text-blue-300">
-          <strong>Edit Mode:</strong> Use the gizmo to {transformMode} the selected marker. Edit dimensions below.
+          <strong>Edit Mode:</strong> Drag the gizmo to move the selection volume. Edit position and dimensions below.
         </div>
       )}
 
       {/* 3D Canvas */}
-      <div className="relative w-full h-80 bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
+      <div className="relative w-full h-[42rem] bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
         <Canvas
           camera={{ position: [2, 2, 2], fov: 50 }}
           onPointerMissed={() => {
@@ -737,7 +1083,7 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
           <Suspense fallback={<ModelLoading />}>
             <AnnotatableModel
               url={modelUrl}
-              annotations={showAnnotations ? annotations : []}
+              annotations={showVolumes ? annotations : []}
               selectedAnnotationId={selectedAnnotationId}
               onSelectAnnotation={setSelectedAnnotationId}
               onDeleteAnnotation={handleDeleteAnnotation}
@@ -748,8 +1094,15 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
               subsystemColor={subsystem.color || '#3B82F6'}
               subsystemName={subsystem.name}
               onAddAnnotation={handleAddAnnotation}
-              transformMode={transformMode}
               orbitControlsRef={orbitControlsRef}
+              onModelMeshes={setModelMeshes}
+            />
+            <SelectionHighlights
+              meshes={modelMeshes}
+              selectedIndices={selectedMeshIndices}
+              selectedNames={selectedMeshNames}
+              color={subsystem.color || '#3B82F6'}
+              visible={true}
             />
           </Suspense>
 
@@ -762,12 +1115,12 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
 
         {/* Mode indicator */}
         <div className="absolute top-2 left-2 text-xs px-2 py-1 rounded bg-gray-900/80 text-gray-300">
-          {isAddMode ? `🎯 Click to add ${currentShape}` : selectedAnnotationId ? `✋ ${transformMode === 'translate' ? 'Move' : 'Rotate'} marker` : '🔄 Rotate to view'}
+          {isAddMode ? `🎯 Click to place ${currentShape}` : selectedAnnotationId ? '✋ Drag to move selection' : '🔄 Rotate to view'}
         </div>
 
-        {/* Marker count */}
+        {/* Selection count */}
         <div className="absolute bottom-2 right-2 text-xs px-2 py-1 rounded bg-gray-900/80 text-gray-300">
-          {annotations.length} marker{annotations.length !== 1 ? 's' : ''}
+          {annotations.length} selection{annotations.length !== 1 ? 's' : ''}
         </div>
       </div>
 
@@ -775,11 +1128,11 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
       {selectedAnnotationId && (
         <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-white">Selected Marker</span>
+            <span className="text-sm font-medium text-white">Selected Volume</span>
             <button
               onClick={() => handleDeleteAnnotation(selectedAnnotationId)}
               className="text-red-400 hover:text-red-300 p-1"
-              title="Delete this marker"
+              title="Delete this volume"
             >
               <Trash2 size={14} />
             </button>
@@ -790,12 +1143,32 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
             
             // Ensure dimensions exist
             const dims = selected.dimensions || getDefaultDimensions(selected.shape, selected.size);
+            const selectedMeshCount = selected.selectedMeshIndices?.length ?? selected.selectedMeshNames?.length ?? 0;
             
             return (
               <div className="space-y-3">
+                <div className="space-y-1">
+                  <div className="text-xs text-gray-400">Position (X/Y/Z):</div>
+                  <NumberInput
+                    label="X"
+                    value={selected.position[0]}
+                    onChange={(v) => handleUpdateAnnotation(selected.id, { position: [v, selected.position[1], selected.position[2]] })}
+                  />
+                  <NumberInput
+                    label="Y"
+                    value={selected.position[1]}
+                    onChange={(v) => handleUpdateAnnotation(selected.id, { position: [selected.position[0], v, selected.position[2]] })}
+                  />
+                  <NumberInput
+                    label="Z"
+                    value={selected.position[2]}
+                    onChange={(v) => handleUpdateAnnotation(selected.id, { position: [selected.position[0], selected.position[1], v] })}
+                  />
+                </div>
+
                 <div className="text-xs text-gray-400">
-                  <div>Position: ({selected.position.map(p => p.toFixed(3)).join(', ')})</div>
-                  {selected.meshName && <div>Mesh: {selected.meshName}</div>}
+                  <div>Selected parts: {selectedMeshCount}</div>
+                  {selected.meshName && <div>Last click mesh: {selected.meshName}</div>}
                 </div>
                 
                 {/* Label input */}
@@ -810,7 +1183,7 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
                   />
                 </div>
 
-                {/* Shape selector for existing marker */}
+                {/* Shape selector for existing volume */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400 w-16">Shape:</span>
                   <div className="flex items-center gap-1">
@@ -834,7 +1207,7 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
                   </div>
                 </div>
 
-                {/* Dimension inputs for selected marker */}
+                {/* Dimension inputs for selected volume */}
                 <div className="border-t border-gray-700 pt-2">
                   <div className="text-xs text-gray-400 mb-2">Dimensions:</div>
                   <DimensionEditor 
@@ -851,7 +1224,7 @@ export default function SubsystemCADAnnotator({ project, subsystem, onUpdateAnno
 
       {/* Summary */}
       <div className="text-sm text-gray-400">
-        {annotations.length} marker{annotations.length !== 1 ? 's' : ''} placed for <strong className="text-white">{subsystem.name}</strong>
+        {annotations.length} selection{annotations.length !== 1 ? 's' : ''} placed for <strong className="text-white">{subsystem.name}</strong>
       </div>
     </div>
   );

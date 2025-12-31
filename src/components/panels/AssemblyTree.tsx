@@ -13,6 +13,7 @@ import {
   Package,
   Filter,
   FileText,
+  Tag,
 } from 'lucide-react';
 import { usePortfolioStore, Project, Subsystem } from '@/store/usePortfolioStore';
 
@@ -107,10 +108,21 @@ interface ProjectNodeProps {
   project: Project;
   expanded: Set<string>;
   toggleExpanded: (id: string) => void;
+  collapseOthersAndExpand: (projectId: string) => void;
 }
 
-function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
-  const { selectedProjectId, selectProject, showProjectOverview, setShowProjectOverview, theme } = usePortfolioStore();
+function ProjectNode({ project, expanded, toggleExpanded, collapseOthersAndExpand }: ProjectNodeProps) {
+  const {
+    selectedProjectId,
+    selectProject,
+    showProjectOverview,
+    setShowProjectOverview,
+    theme,
+    selectedTaggedPartId,
+    hoveredTaggedPartId,
+    selectTaggedPart,
+    setHoveredTaggedPart,
+  } = usePortfolioStore();
   
   const isSelected = selectedProjectId === project.id;
   const isExpanded = expanded.has(project.id);
@@ -118,12 +130,18 @@ function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
   // Auto-expand when this project is selected
   React.useEffect(() => {
     if (isSelected && !isExpanded) {
-      toggleExpanded(project.id);
+      collapseOthersAndExpand(project.id);
     }
-  }, [isSelected, isExpanded, project.id, toggleExpanded]);
+  }, [isSelected, isExpanded, project.id, collapseOthersAndExpand]);
   const CategoryIcon = categoryIcons[project.category];
   const lightMode = theme === 'light';
   const hasContentBlocks = project.contentBlocks && project.contentBlocks.length > 0;
+  const taggedParts = project.cadModel?.taggedParts || [];
+  
+  const handleProjectSelect = () => {
+    selectProject(project.id);
+    collapseOthersAndExpand(project.id);
+  };
   
   return (
     <div className="mb-1">
@@ -135,10 +153,7 @@ function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
             : lightMode ? 'hover:bg-gray-200 border border-transparent' : 'hover:bg-gray-800 border border-transparent'
           }
         `}
-        onClick={() => {
-          selectProject(project.id);
-          if (!isExpanded) toggleExpanded(project.id);
-        }}
+        onClick={handleProjectSelect}
       >
         <button
           onClick={(e) => {
@@ -171,6 +186,7 @@ function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
             `}
             onClick={() => {
               selectProject(project.id);
+              collapseOthersAndExpand(project.id);
               setShowProjectOverview(false);
             }}
           >
@@ -193,6 +209,7 @@ function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
             `}
             onClick={() => {
               selectProject(project.id);
+              collapseOthersAndExpand(project.id);
               setShowProjectOverview(true);
             }}
           >
@@ -205,6 +222,54 @@ function ProjectNode({ project, expanded, toggleExpanded }: ProjectNodeProps) {
             )}
           </div>
           
+          {taggedParts.length > 0 && (
+            <div className="mt-1">
+              <div className={`flex items-center gap-2 px-2 py-1 text-xs ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                <Tag size={12} className="text-blue-400" />
+                <span>Tagged Parts</span>
+                <span className="ml-auto">{taggedParts.length}</span>
+              </div>
+              <div className="space-y-1">
+                {taggedParts.map((part) => {
+                  const isSelectedPart = selectedTaggedPartId === part.id;
+                  const isHoveredPart = hoveredTaggedPartId === part.id;
+                  return (
+                    <div
+                      key={part.id}
+                      className={`flex items-center gap-2 py-1 px-2 rounded border cursor-pointer transition-colors ${
+                        isSelectedPart
+                          ? lightMode
+                            ? 'bg-blue-100 border-blue-400 text-blue-900'
+                            : 'bg-blue-900/40 border-blue-500 text-white'
+                          : isHoveredPart
+                            ? lightMode
+                              ? 'bg-gray-100 border-gray-200 text-gray-900'
+                              : 'bg-gray-800 border-gray-700 text-white'
+                            : lightMode
+                              ? 'border-gray-200 hover:bg-gray-100 text-gray-700'
+                              : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                      }`}
+                      onClick={() => {
+                        selectProject(project.id);
+                        collapseOthersAndExpand(project.id);
+                        setShowProjectOverview(false);
+                        selectTaggedPart(part.id);
+                      }}
+                      onMouseEnter={() => setHoveredTaggedPart(part.id)}
+                      onMouseLeave={() => setHoveredTaggedPart(null)}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full border border-black/10"
+                        style={{ backgroundColor: part.color }}
+                      />
+                      <span className="text-sm truncate flex-1">{part.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Subsystems */}
           {project.subsystems.map((subsystem) => (
             <TreeNode
@@ -240,6 +305,23 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
         next.delete(id);
       } else {
         next.add(id);
+      }
+      return next;
+    });
+  };
+  
+  // Function to collapse all projects except the specified one
+  const collapseOthersAndExpand = (projectId: string) => {
+    setExpanded((prev) => {
+      const next = new Set<string>();
+      // Keep only the selected project expanded (and its subsystems if they were expanded)
+      // Filter to only keep IDs that are subsystems of the selected project
+      const selectedProject = projects.find(p => p.id === projectId);
+      if (selectedProject) {
+        // Add the project itself
+        next.add(projectId);
+        // Optionally keep expanded subsystems (but for now, let's just expand the project)
+        // If you want to keep subsystem expansions, you'd need to check if IDs belong to this project
       }
       return next;
     });
@@ -378,6 +460,7 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
               project={project}
               expanded={expanded}
               toggleExpanded={toggleExpanded}
+              collapseOthersAndExpand={collapseOthersAndExpand}
             />
           ))
         )}

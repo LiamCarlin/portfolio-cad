@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useRef, useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -14,7 +14,7 @@ import {
   Center,
   Bounds,
 } from '@react-three/drei';
-import { usePortfolioStore, Subsystem, TaggedPart, CADAnnotation } from '@/store/usePortfolioStore';
+import { usePortfolioStore, Subsystem, TaggedPart } from '@/store/usePortfolioStore';
 import * as THREE from 'three';
 import ProjectContentViewer from './ProjectContentViewer';
 
@@ -162,25 +162,6 @@ function ModelLoadingIndicator() {
   );
 }
 
-// GLB/GLTF Model component - wrapped to handle loading
-function GLTFModel({ url, scale = 10 }: { url: string; scale?: number }) {
-  const { scene } = useGLTF(url);
-  const clonedScene = useMemo(() => {
-    const clone = scene.clone();
-    // Scale up the model (most CAD exports are in meters, need to convert)
-    clone.scale.setScalar(scale);
-    return clone;
-  }, [scene, scale]);
-  
-  return <primitive object={clonedScene} />;
-}
-
-// Wrapper component that only renders when URL is valid
-function SafeGLTFModel({ url, scale }: { url: string | null; scale?: number }) {
-  if (!url) return null;
-  return <GLTFModel url={url} scale={scale} />;
-}
-
 // Tagged Part Marker
 function TaggedPartMarker({ 
   part, 
@@ -260,160 +241,187 @@ function TaggedPartMarker({
   );
 }
 
-// Shape geometry component for viewport markers - supports dimensions
-function ViewportShapeGeometry({ shape, size, dimensions }: { 
-  shape: string; 
-  size: number;
-  dimensions?: {
-    width?: number;
-    height?: number;
-    depth?: number;
-    radius?: number;
-    radiusTop?: number;
-    radiusBottom?: number;
-    ringRadius?: number;
-    tubeRadius?: number;
-  };
-}) {
-  const d = dimensions || {};
-  
-  switch (shape) {
-    case 'sphere':
-      return <sphereGeometry args={[d.radius || size, 16, 16]} />;
-    case 'cube':
-      return <boxGeometry args={[d.width || size * 1.6, d.height || size * 1.6, d.depth || size * 1.6]} />;
-    case 'cylinder':
-      return <cylinderGeometry args={[d.radius || d.radiusTop || size, d.radius || d.radiusBottom || size, d.height || size * 2, 16]} />;
-    case 'cone':
-      return <coneGeometry args={[d.radiusBottom || size, d.height || size * 2, 16]} />;
-    case 'ring':
-      return <torusGeometry args={[d.ringRadius || size, d.tubeRadius || size * 0.3, 8, 24]} />;
-    case 'arrow':
-      return <coneGeometry args={[d.radiusBottom || size * 0.8, d.height || size * 2.5, 8]} />;
-    default:
-      return <sphereGeometry args={[d.radius || size, 16, 16]} />;
-  }
-}
-
-// Subsystem 3D Annotation Marker - renders different shapes in 3D space
-function SubsystemAnnotationMarker3D({ 
-  annotation,
-  subsystem,
-  isSelected,
-}: { 
-  annotation: CADAnnotation;
+interface SubsystemSelection {
   subsystem: Subsystem;
-  isSelected: boolean;
-}) {
-  const { selectSubsystem, setShowProjectOverview } = usePortfolioStore();
-  const [hovered, setHovered] = useState(false);
-  const meshRef = useRef<THREE.Mesh>(null);
-  
-  const handleClick = (e: any) => {
-    e.stopPropagation();
-    setShowProjectOverview(false);
-    selectSubsystem(subsystem.id, false);
-  };
-
-  // Pulse animation when selected
-  useFrame((state) => {
-    if (meshRef.current && (isSelected || hovered)) {
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.2;
-      meshRef.current.scale.setScalar(scale);
-    } else if (meshRef.current) {
-      meshRef.current.scale.setScalar(1);
-    }
-  });
-
-  const markerColor = isSelected ? '#fbbf24' : (annotation.color || subsystem.color);
-  const markerSize = annotation.size || 0.02;
-  const markerShape = annotation.shape || 'sphere';
-  const markerRotation = annotation.rotation || [0, 0, 0];
-  
-  return (
-    <group position={annotation.position} rotation={markerRotation as [number, number, number]}>
-      <mesh
-        ref={meshRef}
-        onClick={handleClick}
-        onPointerEnter={(e) => {
-          e.stopPropagation();
-          setHovered(true);
-          document.body.style.cursor = 'pointer';
-        }}
-        onPointerLeave={(e) => {
-          e.stopPropagation();
-          setHovered(false);
-          document.body.style.cursor = 'auto';
-        }}
-      >
-        <ViewportShapeGeometry shape={markerShape} size={markerSize} dimensions={annotation.dimensions} />
-        <meshStandardMaterial 
-          color={markerColor}
-          emissive={markerColor}
-          emissiveIntensity={isSelected ? 0.8 : hovered ? 0.5 : 0.3}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      
-      {/* Outer ring for selected state */}
-      {isSelected && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[markerSize * 1.5, markerSize * 0.1, 8, 32]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
-        </mesh>
-      )}
-      
-      {/* Label on hover or when selected */}
-      {(hovered || isSelected) && (
-        <Html
-          position={[0, markerSize * 3, 0]}
-          center
-          style={{ pointerEvents: 'none' }}
-        >
-          <div className={`
-            px-2 py-1 rounded text-xs whitespace-nowrap shadow-lg
-            ${isSelected 
-              ? 'bg-yellow-500 text-black font-bold' 
-              : 'bg-gray-800 text-white border border-gray-700'
-            }
-          `}>
-            {annotation.label || subsystem.name}
-          </div>
-        </Html>
-      )}
-    </group>
-  );
+  meshNames: Set<string>;
+  meshIndices: Set<number>;
 }
 
-// Container for all subsystem 3D annotations (rendered inside Canvas)
-function SubsystemAnnotations3D({ 
-  subsystems,
-  selectedSubsystemIds,
-}: { 
-  subsystems: Subsystem[];
-  selectedSubsystemIds: string[];
+interface ViewportMeshInfo {
+  mesh: THREE.Mesh;
+  index: number;
+  name: string;
+}
+
+function createHighlightMaterial(color: string, opacity: number, emissiveIntensity: number) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    transparent: opacity < 1,
+    opacity,
+    emissive: new THREE.Color(color),
+    emissiveIntensity,
+  });
+}
+
+function SubsystemHighlightModel({
+  url,
+  scale = 10,
+  selections,
+}: {
+  url: string;
+  scale?: number;
+  selections: SubsystemSelection[];
 }) {
-  if (subsystems.length === 0) return null;
+  const { scene } = useGLTF(url);
+  const {
+    selectedSubsystemIds,
+    hoveredSubsystemId,
+    setHoveredSubsystem,
+    selectSubsystem,
+    setShowProjectOverview,
+  } = usePortfolioStore();
+
+  const { modelScene, meshInfos } = useMemo(() => {
+    const clone = scene.clone(true);
+    clone.scale.setScalar(scale);
+    const infos: ViewportMeshInfo[] = [];
+    let index = 0;
+    clone.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const name = child.name || `mesh-${index}`;
+        child.userData.baseMaterial = child.material;
+        child.userData.meshIndex = index;
+        child.userData.meshName = name;
+        infos.push({ mesh: child, index, name });
+        index += 1;
+      }
+    });
+    clone.updateMatrixWorld(true);
+    return { modelScene: clone, meshInfos: infos };
+  }, [scene, scale]);
+
+  const selectionMaps = useMemo(() => {
+    const byName = new Map<string, Set<string>>();
+    const byIndex = new Map<number, Set<string>>();
+    for (const selection of selections) {
+      for (const name of selection.meshNames) {
+        if (!byName.has(name)) byName.set(name, new Set());
+        byName.get(name)!.add(selection.subsystem.id);
+      }
+      for (const index of selection.meshIndices) {
+        if (!byIndex.has(index)) byIndex.set(index, new Set());
+        byIndex.get(index)!.add(selection.subsystem.id);
+      }
+    }
+    return { byName, byIndex };
+  }, [selections]);
+
+  useEffect(() => {
+    meshInfos.forEach((info) => {
+      const ids = new Set<string>();
+      const nameMatches = selectionMaps.byName.get(info.name);
+      if (nameMatches) {
+        nameMatches.forEach((id) => ids.add(id));
+      }
+      const indexMatches = selectionMaps.byIndex.get(info.index);
+      if (indexMatches) {
+        indexMatches.forEach((id) => ids.add(id));
+      }
+      info.mesh.userData.subsystemIds = Array.from(ids);
+    });
+  }, [meshInfos, selectionMaps]);
+
+  const hoveredColor = useMemo(() => {
+    if (!hoveredSubsystemId) return null;
+    const match = selections.find((s) => s.subsystem.id === hoveredSubsystemId);
+    return match?.subsystem.color || '#60a5fa';
+  }, [hoveredSubsystemId, selections]);
+
+  const selectedMaterial = useMemo(
+    () => createHighlightMaterial('#fbbf24', 0.9, 0.6),
+    []
+  );
+  const hoveredMaterial = useMemo(
+    () => (hoveredColor ? createHighlightMaterial(hoveredColor, 0.8, 0.5) : null),
+    [hoveredColor]
+  );
+
+  useEffect(() => {
+    return () => {
+      selectedMaterial.dispose();
+    };
+  }, [selectedMaterial]);
+
+  useEffect(() => {
+    if (!hoveredMaterial) return;
+    return () => {
+      hoveredMaterial.dispose();
+    };
+  }, [hoveredMaterial]);
+
+  useEffect(() => {
+    meshInfos.forEach((info) => {
+      const ids: string[] = info.mesh.userData.subsystemIds || [];
+      const isSelected = ids.some((id) => selectedSubsystemIds.includes(id));
+      const isHovered = hoveredSubsystemId ? ids.includes(hoveredSubsystemId) : false;
+
+      if (isSelected) {
+        info.mesh.material = selectedMaterial;
+      } else if (isHovered && hoveredMaterial) {
+        info.mesh.material = hoveredMaterial;
+      } else {
+        info.mesh.material = info.mesh.userData.baseMaterial || info.mesh.material;
+      }
+    });
+  }, [meshInfos, selectedSubsystemIds, hoveredSubsystemId, selectedMaterial, hoveredMaterial]);
+
+  const pickSubsystemId = useCallback((object: THREE.Object3D) => {
+    if (!(object instanceof THREE.Mesh)) return null;
+    const ids: string[] = object.userData.subsystemIds || [];
+    if (ids.length === 0) return null;
+    const selectedMatch = ids.find((id) => selectedSubsystemIds.includes(id));
+    if (selectedMatch) return selectedMatch;
+    return ids[0];
+  }, [selectedSubsystemIds]);
+
+  const hasSelections = selections.length > 0;
+
+  const handlePointerMove = useCallback((event: any) => {
+    if (!hasSelections) return;
+    event.stopPropagation();
+    const subsystemId = pickSubsystemId(event.object);
+    if (subsystemId) {
+      setHoveredSubsystem(subsystemId);
+      document.body.style.cursor = 'pointer';
+    } else {
+      setHoveredSubsystem(null);
+      document.body.style.cursor = 'auto';
+    }
+  }, [hasSelections, pickSubsystemId, setHoveredSubsystem]);
+
+  const handlePointerOut = useCallback(() => {
+    if (!hasSelections) return;
+    setHoveredSubsystem(null);
+    document.body.style.cursor = 'auto';
+  }, [hasSelections, setHoveredSubsystem]);
+
+  const handleClick = useCallback((event: any) => {
+    if (!hasSelections) return;
+    event.stopPropagation();
+    const subsystemId = pickSubsystemId(event.object);
+    if (subsystemId) {
+      setShowProjectOverview(false);
+      selectSubsystem(subsystemId, event.shiftKey);
+    }
+  }, [hasSelections, pickSubsystemId, selectSubsystem, setShowProjectOverview]);
 
   return (
-    <group>
-      {subsystems.map(subsystem => {
-        const isSelected = selectedSubsystemIds.includes(subsystem.id);
-        return (
-          <group key={subsystem.id}>
-            {(subsystem.cadAnnotations || []).map(annotation => (
-              <SubsystemAnnotationMarker3D
-                key={annotation.id}
-                annotation={annotation}
-                subsystem={subsystem}
-                isSelected={isSelected}
-              />
-            ))}
-          </group>
-        );
-      })}
-    </group>
+    <primitive
+      object={modelScene}
+      onPointerMove={handlePointerMove}
+      onPointerOut={handlePointerOut}
+      onClick={handleClick}
+    />
   );
 }
 
@@ -442,22 +450,28 @@ export default function Viewport({ className }: ViewportProps) {
     return projects.find((p) => p.id === selectedProjectId);
   }, [projects, selectedProjectId]);
 
-  // Get all subsystems with annotations for overlay
-  const subsystemsWithAnnotations = useMemo(() => {
+  const subsystemSelections = useMemo(() => {
     if (!selectedProject) return [];
-    const findAllSubsystems = (subs: Subsystem[]): Subsystem[] => {
-      let result: Subsystem[] = [];
+    const selections: SubsystemSelection[] = [];
+    const collect = (subs: Subsystem[]) => {
       for (const sub of subs) {
-        if (sub.cadAnnotations && sub.cadAnnotations.length > 0) {
-          result.push(sub);
+        const meshNames = new Set<string>();
+        const meshIndices = new Set<number>();
+        for (const annotation of sub.cadAnnotations || []) {
+          annotation.selectedMeshNames?.forEach((name) => meshNames.add(name));
+          annotation.selectedMeshIndices?.forEach((index) => meshIndices.add(index));
+          if (annotation.meshName) meshNames.add(annotation.meshName);
+        }
+        if (meshNames.size > 0 || meshIndices.size > 0) {
+          selections.push({ subsystem: sub, meshNames, meshIndices });
         }
         if (sub.children) {
-          result = result.concat(findAllSubsystems(sub.children));
+          collect(sub.children);
         }
       }
-      return result;
     };
-    return findAllSubsystems(selectedProject.subsystems);
+    collect(selectedProject.subsystems);
+    return selections;
   }, [selectedProject]);
 
   // Load CAD model URL - either from IndexedDB, inline data, or external URL
@@ -512,7 +526,7 @@ export default function Viewport({ className }: ViewportProps) {
     DrawingView, 
     TimelineView, 
     ResultsView, 
-    MediaView 
+    MediaView
   } = require('./ContentViews');
   
   const lightMode = usePortfolioStore.getState().theme === 'light';
@@ -525,6 +539,8 @@ export default function Viewport({ className }: ViewportProps) {
       </div>
     );
   }
+  
+  // Experience view removed from main viewport; shown on welcome page instead
   
   // Render different views based on viewMode
   if (viewMode !== 'assembly' && selectedProject) {
@@ -626,7 +642,7 @@ export default function Viewport({ className }: ViewportProps) {
               <Suspense fallback={<ModelLoadingIndicator />}>
                 <Bounds fit clip observe margin={1.5}>
                   <Center>
-                    <SafeGLTFModel url={cadModelUrl} scale={10} />
+                    <SubsystemHighlightModel url={cadModelUrl} scale={10} selections={subsystemSelections} />
                   </Center>
                 </Bounds>
               </Suspense>
@@ -643,11 +659,6 @@ export default function Viewport({ className }: ViewportProps) {
               />
             ))}
             
-            {/* Subsystem 3D Annotations - markers placed on the model */}
-            <SubsystemAnnotations3D 
-              subsystems={subsystemsWithAnnotations}
-              selectedSubsystemIds={selectedSubsystemIds}
-            />
             {/* Legacy Subsystems (if no CAD model) */}
             {!hasCADModel && hasSubsystems && selectedProject.subsystems.map((subsystem) => (
               <PartMesh

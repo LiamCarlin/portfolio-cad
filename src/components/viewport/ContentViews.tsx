@@ -24,8 +24,10 @@ import {
   Clock,
   Lightbulb,
   Edit2,
+  Briefcase,
+  MapPin,
 } from 'lucide-react';
-import { usePortfolioStore, Project, ContentBlock, Milestone } from '@/store/usePortfolioStore';
+import { usePortfolioStore, Project, ContentBlock, Milestone, ExperienceEntry } from '@/store/usePortfolioStore';
 import { EditButton } from '@/components/admin/UserMenu';
 import { ProjectDetailsEditor, ContentBlockEditor, MilestoneEditor } from '@/components/admin/InlineEditors';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
@@ -704,6 +706,120 @@ export function MediaView({ project, lightMode }: { project: Project; lightMode:
             <ImageIcon size={48} className="mx-auto mb-4 opacity-30" />
             <p>No images uploaded yet.</p>
             <p className="text-sm">Add images in the admin panel.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+// Helper to parse "Month Year" date format
+function parseMonthYear(dateStr: string): Date | null {
+  if (dateStr === 'Present') {
+    return new Date(); // Current date for sorting
+  }
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const parts = dateStr.split(' ');
+  if (parts.length !== 2) return null;
+  const monthIndex = months.indexOf(parts[0]);
+  if (monthIndex === -1) return null;
+  const year = parseInt(parts[1]);
+  if (isNaN(year)) return null;
+  return new Date(year, monthIndex);
+}
+
+export function ExperienceView({ lightMode }: { lightMode: boolean }) {
+  const { experienceEntries } = usePortfolioStore();
+  const baseResolve = require('@/lib/resolvePublicUrl');
+  const resolvePublicUrl = baseResolve.resolvePublicUrl as (url?: string) => string | null;
+  
+  const bgClass = lightMode ? 'bg-gray-50' : 'bg-gray-900';
+  const cardBg = lightMode ? 'bg-white' : 'bg-gray-800';
+  const textClass = lightMode ? 'text-gray-900' : 'text-white';
+  const mutedClass = lightMode ? 'text-gray-500' : 'text-gray-400';
+
+  // Sort by start date (most recent first)
+  const sortedExperience = useMemo(() => {
+    return [...experienceEntries].sort((a, b) => {
+      const dateA = parseMonthYear(a.startDate || 'January 1970');
+      const dateB = parseMonthYear(b.startDate || 'January 1970');
+      if (!dateA || !dateB) return 0;
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [experienceEntries]);
+
+  return (
+    <div className={`h-full overflow-y-auto ${bgClass} p-6`}>
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <Briefcase className="text-blue-500" size={28} />
+          <h2 className={`text-2xl font-bold ${textClass}`}>Experience</h2>
+        </div>
+
+        {sortedExperience.length > 0 ? (
+          <div className="space-y-4">
+            {sortedExperience.map((entry) => (
+              <div key={entry.id} className={`${cardBg} rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow`}>
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-start gap-3">
+                    {/* Logo */}
+                    <div className="w-12 h-12 rounded-md overflow-hidden border border-gray-300 bg-white">
+                      {entry.logoFile || entry.logoUrl ? (
+                        <img
+                          src={entry.logoFile || resolvePublicUrl(entry.logoUrl) || ''}
+                          alt={entry.organization || 'Company logo'}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">Logo</div>
+                      )}
+                    </div>
+                  <div>
+                    <h3 className={`text-xl font-semibold ${textClass}`}>{entry.role}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Briefcase size={16} className="text-blue-500" />
+                      <span className={`font-medium ${mutedClass}`}>{entry.organization}</span>
+                    </div>
+                  </div>
+                  </div>
+                  <div className={`text-right text-sm ${mutedClass}`}>
+                    <div className="flex items-center gap-1">
+                      <Calendar size={14} />
+                      <span>{entry.startDate} - {entry.endDate}</span>
+                    </div>
+                    {entry.location && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <MapPin size={14} />
+                        <span>{entry.location}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {entry.description && (
+                  <p className={`${mutedClass} leading-relaxed mt-3 whitespace-pre-wrap`}>
+                    {entry.description}
+                  </p>
+                )}
+
+                {entry.link && (
+                  <a
+                    href={entry.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-4 text-blue-500 hover:text-blue-400 text-sm transition-colors"
+                  >
+                    Learn more
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`text-center py-16 ${mutedClass}`}>
+            <Briefcase size={48} className="mx-auto mb-4 opacity-30" />
+            <p>No experience entries yet.</p>
+            <p className="text-sm">Add your work history in the admin panel.</p>
           </div>
         )}
       </div>

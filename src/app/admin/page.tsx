@@ -80,6 +80,21 @@ function WelcomePageEditorTab() {
   return <WelcomePageEditorDynamic />;
 }
 
+// Dynamically import Experience & Highlights editors
+const ExperienceEditorDynamic = dynamic(
+  () => import('@/components/admin/ExperienceEditor'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 flex items-center justify-center">
+        <div className="text-gray-400">Loading experience editor...</div>
+      </div>
+    )
+  }
+);
+
+function ExperienceEditorTab() { return <ExperienceEditorDynamic />; }
+
 // Admin password - in production, use environment variables and proper auth
 const ADMIN_PASSWORD = 'admin123'; // Change this!
 
@@ -221,12 +236,14 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'content' | 'cad' | 'images' | 'subsystems' | 'milestones' | 'export'>('details');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [viewMode, setViewMode] = useState<'welcome' | 'projects'>('projects');
+  const [viewMode, setViewMode] = useState<'welcome' | 'experience' | 'projects'>('projects');
   const { theme, welcomePageData } = usePortfolioStore();
   const lightMode = theme === 'light';
 
   // Get updateWelcomePageData from store for reloading after save
   const updateWelcomePageData = usePortfolioStore((state) => state.updateWelcomePageData);
+  const experienceEntries = usePortfolioStore((state) => state.experienceEntries);
+  const setExperienceEntries = usePortfolioStore((state) => state.setExperienceEntries);
 
   // Check for existing auth on mount
   useEffect(() => {
@@ -257,6 +274,9 @@ export default function AdminPage() {
           }
           if (json.welcomePageData) {
             updateWelcomePageData(json.welcomePageData);
+          }
+          if (Array.isArray(json.experienceEntries)) {
+            setExperienceEntries(json.experienceEntries);
           }
         }
       } catch (e) {
@@ -375,7 +395,7 @@ export default function AdminPage() {
       const res = await fetch('/api/save-site', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projects, welcomePageData, bannerImageData, profileImageData }),
+        body: JSON.stringify({ projects, welcomePageData, bannerImageData, profileImageData, experienceEntries }),
       });
       if (!res.ok) {
         throw new Error('Save failed');
@@ -394,6 +414,9 @@ export default function AdminPage() {
             }
             if (json.welcomePageData) {
               updateWelcomePageData(json.welcomePageData);
+            }
+            if (Array.isArray(json.experienceEntries)) {
+              setExperienceEntries(json.experienceEntries);
             }
           }
         } catch (e) {
@@ -556,6 +579,18 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
               <Edit2 size={18} />
               Welcome Page
             </button>
+            {/* Experience Button */}
+            <button
+              onClick={() => setViewMode('experience')}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+                viewMode === 'experience'
+                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  : lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-gray-800 hover:bg-gray-700 text-white'
+              }`}
+            >
+              <FileText size={18} />
+              Experience
+            </button>
             
             {/* Projects Section Button */}
             <button
@@ -645,6 +680,19 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
                 </div>
                 <div className={`rounded-lg border p-6 ${lightMode ? 'border-gray-300 bg-gray-100' : 'border-gray-700 bg-gray-900/50'}`}>
                   <WelcomePageEditorTab />
+                </div>
+              </div>
+            )}
+
+            {/* Experience Editor */}
+            {viewMode === 'experience' && (
+              <div className="mb-12">
+                <div className="mb-4">
+                  <h2 className={`text-2xl font-bold ${lightMode ? 'text-gray-900' : 'text-white'} mb-2`}>Experience</h2>
+                  <p className={lightMode ? 'text-gray-600' : 'text-gray-400'}>Add internships, jobs, and roles</p>
+                </div>
+                <div className={`rounded-lg border p-6 ${lightMode ? 'border-gray-300 bg-gray-100' : 'border-gray-700 bg-gray-900/50'}`}>
+                  <ExperienceEditorTab />
                 </div>
               </div>
             )}
@@ -979,8 +1027,8 @@ function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Projec
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium">Custom Content Blocks</h3>
-          <p className="text-gray-400 text-sm">Add flexible content sections to your project</p>
+          <h3 className={`text-lg font-medium ${lightMode ? 'text-gray-900' : 'text-white'}`}>Custom Content Blocks</h3>
+          <p className={`${lightMode ? 'text-gray-600' : 'text-gray-400'} text-sm`}>Add flexible content sections to your project</p>
         </div>
       </div>
 
@@ -990,7 +1038,7 @@ function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Projec
           <button
             key={type}
             onClick={() => addBlock(type as ContentBlock['type'])}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-sm"
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200' : 'bg-gray-800 hover:bg-gray-700'}`}
           >
             <Icon size={16} />
             {label}
@@ -1000,7 +1048,7 @@ function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Projec
 
       {/* Content blocks */}
       {blocks.length === 0 ? (
-        <div className="text-center text-gray-500 py-12 bg-gray-900 rounded-lg border border-dashed border-gray-700">
+        <div className={`text-center py-12 rounded-lg border border-dashed ${lightMode ? 'bg-gray-100 text-gray-500 border-gray-300' : 'bg-gray-900 text-gray-500 border-gray-700'}`}>
           <FileText size={48} className="mx-auto mb-2 opacity-30" />
           <p>No content blocks yet</p>
           <p className="text-sm">Add blocks above to create custom content sections</p>
@@ -1013,6 +1061,7 @@ function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Projec
               block={block}
               index={index}
               total={blocks.length}
+              lightMode={lightMode}
               onUpdate={(updates) => updateBlock(block.id, updates)}
               onDelete={() => deleteBlock(block.id)}
               onMove={(dir) => moveBlock(block.id, dir)}
@@ -1028,6 +1077,7 @@ function ContentBlockItem({
   block,
   index,
   total,
+  lightMode,
   onUpdate,
   onDelete,
   onMove,
@@ -1035,12 +1085,22 @@ function ContentBlockItem({
   block: ContentBlock;
   index: number;
   total: number;
+  lightMode: boolean;
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onDelete: () => void;
   onMove: (direction: 'up' | 'down') => void;
 }) {
   const [listInput, setListInput] = useState('');
   const [imageInput, setImageInput] = useState('');
+
+  const cardClass = lightMode ? 'bg-white border border-gray-200 shadow-sm' : 'bg-gray-900 border border-gray-700';
+  const headerClass = lightMode ? 'bg-gray-50 border-gray-200 text-gray-900' : 'bg-gray-800/50 border-gray-700 text-white';
+  const textMuted = lightMode ? 'text-gray-600' : 'text-gray-400';
+  const inputClass = lightMode
+    ? 'bg-white border border-gray-300 text-gray-900'
+    : 'bg-gray-800 border border-gray-700';
+  const neutralButton = lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200' : 'bg-gray-700 hover:bg-gray-600 text-white';
+  const dashedUpload = lightMode ? 'border-gray-300 bg-gray-50' : 'border-gray-600 bg-transparent';
 
   const addListItem = () => {
     if (listInput.trim() && block.items) {
@@ -1059,18 +1119,18 @@ function ContentBlockItem({
   const BlockIcon = CONTENT_BLOCK_TYPES.find(t => t.type === block.type)?.icon || Type;
 
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between p-3 bg-gray-800/50 border-b border-gray-700">
+    <div className={`${cardClass} rounded-lg overflow-hidden`}>
+      <div className={`flex items-center justify-between p-3 border-b ${headerClass}`}>
         <div className="flex items-center gap-3">
-          <GripVertical size={16} className="text-gray-500" />
-          <BlockIcon size={16} className="text-blue-400" />
+          <GripVertical size={16} className={textMuted} />
+          <BlockIcon size={16} className="text-blue-500" />
           <span className="font-medium capitalize">{block.type}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onMove('up')}
             disabled={index === 0}
-            className="p-1 hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+            className={`p-1 rounded ${lightMode ? 'hover:bg-gray-200' : 'hover:bg-gray-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
             title="Move up"
           >
             <ChevronDown size={16} className="rotate-180" />
@@ -1078,14 +1138,14 @@ function ContentBlockItem({
           <button
             onClick={() => onMove('down')}
             disabled={index === total - 1}
-            className="p-1 hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+            className={`p-1 rounded ${lightMode ? 'hover:bg-gray-200' : 'hover:bg-gray-700'} disabled:opacity-30 disabled:cursor-not-allowed`}
             title="Move down"
           >
             <ChevronDown size={16} />
           </button>
           <button
             onClick={onDelete}
-            className="p-1 hover:bg-red-600 rounded ml-2"
+            className={`p-1 rounded ml-2 ${lightMode ? 'hover:bg-red-100 text-red-600' : 'hover:bg-red-600 text-white'}`}
             title="Delete"
           >
             <Trash2 size={16} />
@@ -1101,7 +1161,7 @@ function ContentBlockItem({
               <select
                 value={block.level || 2}
                 onChange={(e) => onUpdate({ level: parseInt(e.target.value) as 1 | 2 | 3 })}
-                className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                className={`${inputClass} rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none`}
               >
                 <option value={1}>H1 - Large</option>
                 <option value={2}>H2 - Medium</option>
@@ -1112,7 +1172,7 @@ function ContentBlockItem({
                 value={block.content}
                 onChange={(e) => onUpdate({ content: e.target.value })}
                 placeholder="Heading text..."
-                className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+                className={`flex-1 ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none`}
               />
             </div>
           </>
@@ -1125,7 +1185,7 @@ function ContentBlockItem({
             onChange={(e) => onUpdate({ content: e.target.value })}
             placeholder="Enter your text content... Supports multiple paragraphs."
             rows={4}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none"
+            className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none`}
           />
         )}
 
@@ -1137,14 +1197,14 @@ function ContentBlockItem({
               onChange={(e) => onUpdate({ content: e.target.value })}
               placeholder="Enter quote text..."
               rows={2}
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none"
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none`}
             />
             <input
               type="text"
               value={block.author || ''}
               onChange={(e) => onUpdate({ author: e.target.value })}
               placeholder="Author (optional)"
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-sm`}
             />
           </div>
         )}
@@ -1153,11 +1213,11 @@ function ContentBlockItem({
         {block.type === 'image' && (
           <div className="space-y-3">
             {/* Upload section */}
-            <div className="border border-dashed border-gray-600 rounded-lg p-4">
+            <div className={`border border-dashed rounded-lg p-4 ${dashedUpload}`}>
               <label className="flex flex-col items-center justify-center cursor-pointer">
-                <Upload size={24} className="text-gray-500 mb-2" />
-                <span className="text-sm text-gray-400 mb-1">Upload Image</span>
-                <span className="text-xs text-gray-500">or drag and drop</span>
+                <Upload size={24} className={`${textMuted} mb-2`} />
+                <span className={`text-sm mb-1 ${textMuted}`}>Upload Image</span>
+                <span className={`text-xs ${textMuted}`}>or drag and drop</span>
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -1175,26 +1235,26 @@ function ContentBlockItem({
                 />
               </label>
             </div>
-            <div className="text-center text-xs text-gray-500">- or -</div>
+            <div className={`text-center text-xs ${textMuted}`}>- or -</div>
             <input
               type="url"
               value={block.content}
               onChange={(e) => onUpdate({ content: e.target.value, file: undefined })}
               placeholder="Image URL..."
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none`}
             />
             <input
               type="text"
               value={block.caption || ''}
               onChange={(e) => onUpdate({ caption: e.target.value })}
               placeholder="Caption (optional)"
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-sm`}
             />
             {(block.file || block.content) && (
               <img 
                 src={block.file || block.content} 
                 alt="Preview" 
-                className="max-w-xs rounded border border-gray-700"
+                className={`max-w-xs rounded border ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}
                 onError={(e) => (e.currentTarget.style.display = 'none')}
               />
             )}
@@ -1205,11 +1265,11 @@ function ContentBlockItem({
         {block.type === 'gallery' && (
           <div className="space-y-3">
             {/* Upload multiple images */}
-            <div className="border border-dashed border-gray-600 rounded-lg p-4">
+            <div className={`border border-dashed rounded-lg p-4 ${dashedUpload}`}>
               <label className="flex flex-col items-center justify-center cursor-pointer">
-                <Upload size={24} className="text-gray-500 mb-2" />
-                <span className="text-sm text-gray-400 mb-1">Upload Images</span>
-                <span className="text-xs text-gray-500">Select multiple or drag and drop</span>
+                <Upload size={24} className={`${textMuted} mb-2`} />
+                <span className={`text-sm text-gray-400 mb-1 ${lightMode ? 'text-gray-600' : ''}`}>Upload Images</span>
+                <span className={`text-xs ${textMuted}`}>Select multiple or drag and drop</span>
                 <input 
                   type="file" 
                   accept="image/*"
@@ -1236,7 +1296,7 @@ function ContentBlockItem({
                 />
               </label>
             </div>
-            <div className="text-center text-xs text-gray-500">- or add URL -</div>
+            <div className={`text-center text-xs ${textMuted}`}>- or add URL -</div>
             <div className="flex gap-2">
               <input
                 type="url"
@@ -1244,11 +1304,11 @@ function ContentBlockItem({
                 onChange={(e) => setImageInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addGalleryImage()}
                 placeholder="Add image URL..."
-                className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+                className={`flex-1 ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none`}
               />
               <button
                 onClick={addGalleryImage}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                className={`px-4 py-2 rounded transition-colors ${neutralButton}`}
               >
                 Add
               </button>
@@ -1262,12 +1322,12 @@ function ContentBlockItem({
                     <img 
                       src={img} 
                       alt={`Gallery ${i + 1}`} 
-                      className="w-full h-20 object-cover rounded border border-gray-700"
+                      className={`w-full h-20 object-cover rounded border ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}
                       onError={(e) => (e.currentTarget.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23333" width="100" height="100"/><text fill="%23666" x="50%" y="50%" text-anchor="middle" dy=".3em">Error</text></svg>')}
                     />
                     <button
                       onClick={() => onUpdate({ images: block.images?.filter((_, idx) => idx !== i) })}
-                      className="absolute top-1 right-1 p-1 bg-red-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className={`absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${lightMode ? 'bg-red-100 text-red-600' : 'bg-red-600 text-white'}`}
                     >
                       <X size={12} />
                     </button>
@@ -1279,11 +1339,11 @@ function ContentBlockItem({
                     <img 
                       src={img} 
                       alt={`Uploaded ${i + 1}`} 
-                      className="w-full h-20 object-cover rounded border border-blue-700"
+                      className={`w-full h-20 object-cover rounded border ${lightMode ? 'border-blue-200' : 'border-blue-700'}`}
                     />
                     <button
                       onClick={() => onUpdate({ imageFiles: block.imageFiles?.filter((_, idx) => idx !== i) })}
-                      className="absolute top-1 right-1 p-1 bg-red-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className={`absolute top-1 right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${lightMode ? 'bg-red-100 text-red-600' : 'bg-red-600 text-white'}`}
                     >
                       <X size={12} />
                     </button>
@@ -1304,11 +1364,11 @@ function ContentBlockItem({
                 onChange={(e) => setListInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addListItem()}
                 placeholder="Add list item..."
-                className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+                className={`flex-1 ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none`}
               />
               <button
                 onClick={addListItem}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                className={`px-4 py-2 rounded transition-colors ${neutralButton}`}
               >
                 Add
               </button>
@@ -1317,11 +1377,11 @@ function ContentBlockItem({
               <ul className="space-y-1">
                 {block.items.map((item, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm">
-                    <span className="w-2 h-2 bg-blue-400 rounded-full" />
-                    <span className="flex-1 bg-gray-800 px-2 py-1 rounded">{item}</span>
+                    <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span className={`flex-1 px-2 py-1 rounded ${lightMode ? 'bg-gray-100' : 'bg-gray-800'}`}>{item}</span>
                     <button
                       onClick={() => onUpdate({ items: block.items?.filter((_, idx) => idx !== i) })}
-                      className="text-gray-500 hover:text-red-400"
+                      className={`${textMuted} hover:text-red-500`}
                     >
                       <X size={14} />
                     </button>
@@ -1340,21 +1400,21 @@ function ContentBlockItem({
               value={block.title || ''}
               onChange={(e) => onUpdate({ title: e.target.value })}
               placeholder="Link title..."
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none`}
             />
             <input
               type="url"
               value={block.url || ''}
               onChange={(e) => onUpdate({ url: e.target.value })}
               placeholder="https://..."
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none`}
             />
             <textarea
               value={block.content}
               onChange={(e) => onUpdate({ content: e.target.value })}
               placeholder="Description (optional)"
               rows={2}
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none text-sm"
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none text-sm`}
             />
           </div>
         )}
@@ -1398,7 +1458,7 @@ function SubsystemsEditor({ project, onUpdate, lightMode }: { project: Project; 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-gray-400">Add components/subsystems to your project assembly</p>
+        <p className={`${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Add components/subsystems to your project assembly</p>
         <button
           onClick={addSubsystem}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
@@ -1409,7 +1469,7 @@ function SubsystemsEditor({ project, onUpdate, lightMode }: { project: Project; 
       </div>
 
       {project.subsystems.length === 0 ? (
-        <div className="text-center text-gray-500 py-12 bg-gray-900 rounded-lg">
+        <div className={`text-center py-12 rounded-lg ${lightMode ? 'bg-gray-100 text-gray-500' : 'bg-gray-900 text-gray-500'}`}>
           <Box size={48} className="mx-auto mb-2 opacity-30" />
           <p>No subsystems yet</p>
           <p className="text-sm">Add components to build your assembly</p>
@@ -1423,6 +1483,7 @@ function SubsystemsEditor({ project, onUpdate, lightMode }: { project: Project; 
               subsystem={sub}
               isExpanded={expandedIds.has(sub.id)}
               isEditing={editingId === sub.id}
+              lightMode={lightMode}
               onToggleExpand={() => toggleExpand(sub.id)}
               onEdit={() => setEditingId(editingId === sub.id ? null : sub.id)}
               onUpdate={(updates) => updateSubsystem(sub.id, updates)}
@@ -1440,6 +1501,7 @@ function SubsystemItem({
   subsystem,
   isExpanded,
   isEditing,
+  lightMode,
   onToggleExpand,
   onEdit,
   onUpdate,
@@ -1449,6 +1511,7 @@ function SubsystemItem({
   subsystem: Subsystem;
   isExpanded: boolean;
   isEditing: boolean;
+  lightMode: boolean;
   onToggleExpand: () => void;
   onEdit: () => void;
   onUpdate: (updates: Partial<Subsystem>) => void;
@@ -1472,9 +1535,9 @@ function SubsystemItem({
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+    <div className={`rounded-lg overflow-hidden ${lightMode ? 'bg-white border border-gray-200 shadow-sm' : 'bg-gray-900 border border-gray-700'}`}>
       <div
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-800"
+        className={`flex items-center justify-between p-3 cursor-pointer ${lightMode ? 'hover:bg-gray-100' : 'hover:bg-gray-800'}`}
         onClick={onToggleExpand}
       >
         <div className="flex items-center gap-3">
@@ -1484,18 +1547,18 @@ function SubsystemItem({
             style={{ backgroundColor: subsystem.color }}
           />
           <span className="font-medium">{subsystem.name}</span>
-          <span className="text-sm text-gray-500">{subsystem.role || 'No role specified'}</span>
+          <span className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-500'}`}>{subsystem.role || 'No role specified'}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className={`p-1 rounded ${isEditing ? 'bg-blue-600' : 'hover:bg-gray-700'}`}
+            className={`p-1 rounded ${isEditing ? 'bg-blue-600' : lightMode ? 'hover:bg-gray-200' : 'hover:bg-gray-700'}`}
           >
             <Edit2 size={16} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1 hover:bg-red-600 rounded"
+            className={`p-1 rounded ${lightMode ? 'hover:bg-red-100 text-red-600' : 'hover:bg-red-600 text-white'}`}
           >
             <Trash2 size={16} />
           </button>
@@ -1503,88 +1566,88 @@ function SubsystemItem({
       </div>
 
       {isExpanded && isEditing && (
-        <div className="p-4 border-t border-gray-700 space-y-4">
+        <div className={`p-4 space-y-4 ${lightMode ? 'border-t border-gray-200' : 'border-t border-gray-700'}`}>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Name</label>
+              <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Name</label>
               <input
                 type="text"
                 value={subsystem.name}
                 onChange={(e) => onUpdate({ name: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+                className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Color</label>
+              <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Color</label>
               <input
                 type="color"
                 value={subsystem.color}
                 onChange={(e) => onUpdate({ color: e.target.value })}
-                className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg cursor-pointer"
+                className={`w-full h-10 rounded-lg cursor-pointer ${lightMode ? 'bg-white border border-gray-300' : 'bg-gray-800 border border-gray-700'}`}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Your Role</label>
+            <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Your Role</label>
             <input
               type="text"
               value={subsystem.role}
               onChange={(e) => onUpdate({ role: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Description</label>
+            <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Description</label>
             <textarea
               value={subsystem.description}
               onChange={(e) => onUpdate({ description: e.target.value })}
               rows={2}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-none"
+              className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
             />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Position X</label>
+              <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Position X</label>
               <input
                 type="number"
                 step="0.1"
                 value={subsystem.position[0]}
                 onChange={(e) => onUpdate({ position: [parseFloat(e.target.value), subsystem.position[1], subsystem.position[2]] })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+                className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Position Y</label>
+              <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Position Y</label>
               <input
                 type="number"
                 step="0.1"
                 value={subsystem.position[1]}
                 onChange={(e) => onUpdate({ position: [subsystem.position[0], parseFloat(e.target.value), subsystem.position[2]] })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+                className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Position Z</label>
+              <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Position Z</label>
               <input
                 type="number"
                 step="0.1"
                 value={subsystem.position[2]}
                 onChange={(e) => onUpdate({ position: [subsystem.position[0], subsystem.position[1], parseFloat(e.target.value)] })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+                className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Tools Used</label>
+            <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Tools Used</label>
             <div className="flex flex-wrap gap-1 mb-2">
               {subsystem.tools.map((tool: string, i: number) => (
-                <span key={i} className="flex items-center gap-1 px-2 py-1 bg-gray-800 rounded text-sm">
+                <span key={i} className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${lightMode ? 'bg-gray-100 text-gray-800' : 'bg-gray-800'}`}>
                   {tool}
-                  <button onClick={() => onUpdate({ tools: subsystem.tools.filter((_: string, idx: number) => idx !== i) })} className="text-gray-500 hover:text-red-400">
+                  <button onClick={() => onUpdate({ tools: subsystem.tools.filter((_: string, idx: number) => idx !== i) })} className={`${lightMode ? 'text-gray-600 hover:text-red-600' : 'text-gray-500 hover:text-red-400'}`}>
                     <X size={12} />
                   </button>
                 </span>
@@ -1597,19 +1660,19 @@ function SubsystemItem({
                 onChange={(e) => setToolInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addTool()}
                 placeholder="Add tool..."
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+                className={`flex-1 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
               />
-              <button onClick={addTool} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Add</button>
+              <button onClick={addTool} className={`px-3 py-2 rounded-lg text-sm ${lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200' : 'bg-gray-700 hover:bg-gray-600'}`}>Add</button>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Key Outcomes</label>
+            <label className={`block text-sm mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Key Outcomes</label>
             <div className="space-y-1 mb-2">
               {subsystem.outcomes.map((outcome: string, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
-                  <span className="flex-1 bg-gray-800 px-2 py-1 rounded">{outcome}</span>
-                  <button onClick={() => onUpdate({ outcomes: subsystem.outcomes.filter((_: string, idx: number) => idx !== i) })} className="text-gray-500 hover:text-red-400">
+                  <span className={`flex-1 px-2 py-1 rounded ${lightMode ? 'bg-gray-100' : 'bg-gray-800'}`}>{outcome}</span>
+                  <button onClick={() => onUpdate({ outcomes: subsystem.outcomes.filter((_: string, idx: number) => idx !== i) })} className={`${lightMode ? 'text-gray-600 hover:text-red-600' : 'text-gray-500 hover:text-red-400'}`}>
                     <X size={14} />
                   </button>
                 </div>
@@ -1622,21 +1685,21 @@ function SubsystemItem({
                 onChange={(e) => setOutcomeInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addOutcome()}
                 placeholder="Add outcome..."
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm"
+                className={`flex-1 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none text-sm ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
               />
-              <button onClick={addOutcome} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Add</button>
+              <button onClick={addOutcome} className={`px-3 py-2 rounded-lg text-sm ${lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200' : 'bg-gray-700 hover:bg-gray-600'}`}>Add</button>
             </div>
           </div>
 
           {/* CAD Annotation Section */}
-          <div className="pt-4 border-t border-gray-700">
+          <div className={`pt-4 ${lightMode ? 'border-t border-gray-200' : 'border-t border-gray-700'}`}>
             <div className="flex items-center gap-2 mb-3">
-              <Box size={18} className="text-blue-400" />
-              <label className="text-sm font-medium text-white">Mark on CAD Model</label>
+              <Box size={18} className="text-blue-500" />
+              <label className={`text-sm font-medium ${lightMode ? 'text-gray-900' : 'text-white'}`}>Select Subsystem Parts</label>
             </div>
-            <p className="text-xs text-gray-500 mb-3">
-              Draw on the 3D model to highlight which parts belong to this subsystem. 
-              Use the brush, line, rectangle, or circle tools to annotate.
+            <p className={`text-xs mb-3 ${lightMode ? 'text-gray-600' : 'text-gray-500'}`}>
+              Choose a shape, click the model to place a selection volume, then move or resize it.
+              Parts inside the volume will be highlighted for this subsystem.
             </p>
             <SubsystemCADAnnotator
               project={project}
@@ -1671,7 +1734,7 @@ function MilestonesEditor({ project, onUpdate, lightMode }: { project: Project; 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-gray-400">Track your project timeline with milestones</p>
+        <p className={`${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Track your project timeline with milestones</p>
         <button
           onClick={addMilestone}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
@@ -1682,39 +1745,39 @@ function MilestonesEditor({ project, onUpdate, lightMode }: { project: Project; 
       </div>
 
       {project.milestones.length === 0 ? (
-        <div className="text-center text-gray-500 py-12 bg-gray-900 rounded-lg">
+        <div className={`text-center py-12 rounded-lg ${lightMode ? 'bg-gray-100 text-gray-500' : 'bg-gray-900 text-gray-500'}`}>
           <p>No milestones yet</p>
         </div>
       ) : (
         <div className="space-y-2">
           {project.milestones.map((milestone, index) => (
-            <div key={milestone.id} className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+            <div key={milestone.id} className={`rounded-lg p-4 ${lightMode ? 'bg-white border border-gray-200 shadow-sm' : 'bg-gray-900 border border-gray-700'}`}>
               <div className="grid grid-cols-4 gap-4 items-start">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Name</label>
+                  <label className={`block text-xs mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-500'}`}>Name</label>
                   <input
                     type="text"
                     value={milestone.name}
                     onChange={(e) => updateMilestone(index, { name: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className={`w-full rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Date</label>
+                  <label className={`block text-xs mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-500'}`}>Date</label>
                   <input
                     type="date"
                     value={milestone.date}
                     onChange={(e) => updateMilestone(index, { date: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className={`w-full rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Description</label>
+                  <label className={`block text-xs mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-500'}`}>Description</label>
                   <input
                     type="text"
                     value={milestone.description}
                     onChange={(e) => updateMilestone(index, { description: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className={`w-full rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
                   />
                 </div>
                 <div className="flex items-end gap-2">
@@ -1723,13 +1786,13 @@ function MilestonesEditor({ project, onUpdate, lightMode }: { project: Project; 
                       type="checkbox"
                       checked={milestone.completed}
                       onChange={(e) => updateMilestone(index, { completed: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-green-600"
+                      className={`w-4 h-4 rounded text-green-600 ${lightMode ? 'border-gray-300 bg-white' : 'border-gray-600 bg-gray-800'}`}
                     />
                     <span className="text-sm">Completed</span>
                   </label>
                   <button
                     onClick={() => deleteMilestone(index)}
-                    className="p-2 hover:bg-red-600 rounded ml-auto"
+                    className={`p-2 rounded ml-auto ${lightMode ? 'hover:bg-red-100 text-red-600' : 'hover:bg-red-600 text-white'}`}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -1747,7 +1810,6 @@ function MilestonesEditor({ project, onUpdate, lightMode }: { project: Project; 
 function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const [isTaggingMode, setIsTaggingMode] = useState(false);
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
-  const [editingPart, setEditingPart] = useState<TaggedPart | null>(null);
   const [modelDataUrl, setModelDataUrl] = useState<string | null>(null);
   const [loadingModel, setLoadingModel] = useState(false);
   
@@ -1864,8 +1926,6 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
       });
     }
     
-    // Open editor for the new part
-    setEditingPart(newPart);
     setIsTaggingMode(false);
   }, [isTaggingMode, cadModel, taggedParts, onUpdate]);
 
@@ -1880,12 +1940,7 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
         ),
       },
     });
-    
-    // Update editing state if needed
-    if (editingPart?.id === partId) {
-      setEditingPart(prev => prev ? { ...prev, ...updates } : null);
-    }
-  }, [cadModel, taggedParts, onUpdate, editingPart]);
+  }, [cadModel, taggedParts, onUpdate]);
 
   const deleteTaggedPart = useCallback((partId: string) => {
     if (!cadModel) return;
@@ -1896,37 +1951,32 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
         taggedParts: taggedParts.filter(p => p.id !== partId),
       },
     });
-    
-    if (editingPart?.id === partId) {
-      setEditingPart(null);
-    }
-  }, [cadModel, taggedParts, onUpdate, editingPart]);
+  }, [cadModel, taggedParts, onUpdate]);
 
   const removeModel = useCallback(() => {
     if (confirm('Are you sure you want to remove this CAD model and all tags?')) {
       onUpdate({ cadModel: undefined });
-      setEditingPart(null);
     }
   }, [onUpdate]);
 
   return (
     <div className="space-y-6">
       {/* Instructions */}
-      <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4">
-        <h3 className="font-medium text-blue-300 mb-2 flex items-center gap-2">
+      <div className={`${lightMode ? 'bg-blue-50 border-blue-200' : 'bg-blue-900/20 border-blue-700'} rounded-lg p-4`}>
+        <h3 className={`font-medium mb-2 flex items-center gap-2 ${lightMode ? 'text-blue-700' : 'text-blue-300'}`}>
           <Boxes size={18} />
           3D CAD Model Setup
         </h3>
-        <p className="text-sm text-gray-400">
+        <p className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
           Upload a GLB or GLTF file exported from Onshape (or other CAD software). 
           Then click on parts of the model to tag them with descriptions.
         </p>
-        <div className="mt-2 text-sm text-gray-500">
+        <div className={`mt-2 text-sm ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}>
           <strong>How to export from Onshape:</strong> Right-click on Part Studio or Assembly → Export → GLTF
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Left: 3D Viewer */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -1939,7 +1989,9 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                       isTaggingMode
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        : lightMode
+                          ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                     }`}
                   >
                     <Tag size={14} />
@@ -1947,7 +1999,11 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
                   </button>
                   <button
                     onClick={removeModel}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg text-sm transition-colors"
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      lightMode
+                        ? 'bg-red-100 hover:bg-red-200 text-red-700'
+                        : 'bg-red-600/20 hover:bg-red-600/40 text-red-400'
+                    }`}
                   >
                     <Trash2 size={14} />
                     Remove
@@ -1957,7 +2013,7 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
             </div>
           </div>
 
-          <div className="aspect-square bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+          <div className={`aspect-square rounded-lg border overflow-hidden ${lightMode ? 'bg-gray-100 border-gray-200' : 'bg-gray-900 border-gray-700'}`}>
             {modelUrl ? (
               <CADModelViewer
                 modelUrl={modelUrl}
@@ -1979,248 +2035,12 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
           </div>
 
           {cadModel && (
-            <div className="text-sm text-gray-400">
+            <div className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
               <p><strong>File:</strong> {cadModel.name}</p>
-              <p><strong>Tags:</strong> {taggedParts.length} parts tagged</p>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Tagged Parts List & Editor */}
-        <div className="space-y-4">
-          <h4 className="font-medium">Tagged Parts</h4>
-          
-          {editingPart ? (
-            <TaggedPartEditor
-              part={editingPart}
-              onUpdate={(updates) => updateTaggedPart(editingPart.id, updates)}
-              onDelete={() => deleteTaggedPart(editingPart.id)}
-              onClose={() => setEditingPart(null)}
-            />
-          ) : (
-            <div className="space-y-2">
-              {taggedParts.length === 0 ? (
-                <div className="text-center text-gray-500 py-12 bg-gray-900 rounded-lg">
-                  <Tag size={32} className="mx-auto mb-2 opacity-30" />
-                  <p>No parts tagged yet</p>
-                  <p className="text-sm">Upload a model and click "Tag Parts" to start</p>
-                </div>
-              ) : (
-                taggedParts.map(part => (
-                  <div
-                    key={part.id}
-                    className={`flex items-center gap-3 p-3 bg-gray-900 border rounded-lg cursor-pointer transition-colors ${
-                      selectedPartId === part.id
-                        ? 'border-blue-500 bg-blue-900/20'
-                        : 'border-gray-700 hover:border-gray-600'
-                    }`}
-                    onClick={() => setEditingPart(part)}
-                    onMouseEnter={() => setSelectedPartId(part.id)}
-                    onMouseLeave={() => setSelectedPartId(null)}
-                  >
-                    <div
-                      className="w-4 h-4 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: part.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{part.name}</div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {part.description || 'No description'}
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteTaggedPart(part.id);
-                      }}
-                      className="p-1 hover:bg-red-600 rounded opacity-50 hover:opacity-100"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))
-              )}
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// Tagged Part Editor
-function TaggedPartEditor({
-  part,
-  onUpdate,
-  onDelete,
-  onClose,
-}: {
-  part: TaggedPart;
-  onUpdate: (updates: Partial<TaggedPart>) => void;
-  onDelete: () => void;
-  onClose: () => void;
-}) {
-  const [toolInput, setToolInput] = useState('');
-  const [outcomeInput, setOutcomeInput] = useState('');
-
-  const addTool = () => {
-    if (toolInput.trim()) {
-      onUpdate({ tools: [...part.tools, toolInput.trim()] });
-      setToolInput('');
-    }
-  };
-
-  const addOutcome = () => {
-    if (outcomeInput.trim()) {
-      onUpdate({ outcomes: [...part.outcomes, outcomeInput.trim()] });
-      setOutcomeInput('');
-    }
-  };
-
-  return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h5 className="font-medium flex items-center gap-2">
-          <div
-            className="w-4 h-4 rounded-full"
-            style={{ backgroundColor: part.color }}
-          />
-          Edit Part Tag
-        </h5>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onDelete}
-            className="p-1.5 hover:bg-red-600 rounded text-red-400"
-            title="Delete tag"
-          >
-            <Trash2 size={16} />
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-gray-700 rounded"
-            title="Close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Part Name</label>
-          <input
-            type="text"
-            value={part.name}
-            onChange={(e) => onUpdate({ name: e.target.value })}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Description</label>
-          <textarea
-            value={part.description}
-            onChange={(e) => onUpdate({ description: e.target.value })}
-            rows={3}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none resize-none"
-            placeholder="What does this part do?"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Your Role</label>
-          <input
-            type="text"
-            value={part.role}
-            onChange={(e) => onUpdate({ role: e.target.value })}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="What did you do here?"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Color</label>
-          <input
-            type="color"
-            value={part.color}
-            onChange={(e) => onUpdate({ color: e.target.value })}
-            className="w-16 h-8 bg-gray-800 border border-gray-700 rounded cursor-pointer"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Tools Used</label>
-          <div className="flex flex-wrap gap-1 mb-2">
-            {part.tools.map((tool, i) => (
-              <span
-                key={i}
-                className="flex items-center gap-1 px-2 py-0.5 bg-gray-800 rounded text-xs"
-              >
-                {tool}
-                <button
-                  onClick={() => onUpdate({ tools: part.tools.filter((_, j) => j !== i) })}
-                  className="text-gray-500 hover:text-red-400"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={toolInput}
-              onChange={(e) => setToolInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTool()}
-              placeholder="Add tool..."
-              className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-            />
-            <button onClick={addTool} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">
-              Add
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-500 mb-1">Outcomes</label>
-          <div className="flex flex-wrap gap-1 mb-2">
-            {part.outcomes.map((outcome, i) => (
-              <span
-                key={i}
-                className="flex items-center gap-1 px-2 py-0.5 bg-gray-800 rounded text-xs"
-              >
-                {outcome}
-                <button
-                  onClick={() => onUpdate({ outcomes: part.outcomes.filter((_, j) => j !== i) })}
-                  className="text-gray-500 hover:text-red-400"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={outcomeInput}
-              onChange={(e) => setOutcomeInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addOutcome()}
-              placeholder="Add outcome..."
-              className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-            />
-            <button onClick={addOutcome} className="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm">
-              Add
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <button
-        onClick={onClose}
-        className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm transition-colors"
-      >
-        Done
-      </button>
     </div>
   );
 }
@@ -2258,7 +2078,7 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
     <div className="space-y-6 max-w-4xl">
       {/* Thumbnail */}
       <div>
-        <h4 className="font-medium mb-3">Project Thumbnail</h4>
+        <h4 className={`font-medium mb-3 ${lightMode ? 'text-gray-900' : 'text-white'}`}>Project Thumbnail</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <FileUpload
@@ -2270,13 +2090,13 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Or use URL</label>
+            <label className={`block text-sm mb-2 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Or use URL</label>
             <input
               type="url"
               value={project.thumbnail || ''}
               onChange={(e) => onUpdate({ thumbnail: e.target.value, thumbnailFile: undefined })}
               placeholder="https://example.com/image.jpg"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none"
+              className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
             />
           </div>
         </div>
@@ -2285,7 +2105,7 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
             <img
               src={project.thumbnailFile || project.thumbnail}
               alt="Thumbnail preview"
-              className="w-40 h-30 object-cover rounded-lg border border-gray-700"
+              className={`w-40 h-30 object-cover rounded-lg border ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}
             />
           </div>
         )}
@@ -2293,7 +2113,7 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
 
       {/* Project Images Gallery */}
       <div>
-        <h4 className="font-medium mb-3">Project Gallery ({images.length} images)</h4>
+        <h4 className={`font-medium mb-3 ${lightMode ? 'text-gray-900' : 'text-white'}`}>Project Gallery ({images.length} images)</h4>
         
         {images.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
@@ -2303,13 +2123,13 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
                   <img
                     src={img.data}
                     alt={img.caption || img.name}
-                    className="w-full h-32 object-cover rounded-lg border border-gray-700"
+                    className={`w-full h-32 object-cover rounded-lg border ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}
                   />
                   <button
                     onClick={() => handleImageRemove(img.id)}
-                    className="absolute top-2 right-2 p-1 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    className={`absolute top-2 right-2 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${lightMode ? 'bg-red-100 text-red-600' : 'bg-red-500 text-white'}`}
                   >
-                    <X size={14} className="text-white" />
+                    <X size={14} />
                   </button>
                 </div>
                 <input
@@ -2317,7 +2137,7 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
                   value={img.caption || ''}
                   onChange={(e) => handleCaptionUpdate(img.id, e.target.value)}
                   placeholder="Caption..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:border-blue-500 focus:outline-none"
+                  className={`w-full rounded px-2 py-1 text-xs focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
                 />
               </div>
             ))}
@@ -2339,8 +2159,8 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
 function ExportPreview({ project, lightMode }: { project: Project; lightMode: boolean }) {
   return (
     <div className="space-y-4">
-      <p className="text-gray-400">Preview of the JSON data for this project</p>
-      <pre className="bg-gray-900 border border-gray-700 rounded-lg p-4 overflow-auto max-h-[60vh] text-sm text-gray-300">
+      <p className={`${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>Preview of the JSON data for this project</p>
+      <pre className={`rounded-lg p-4 overflow-auto max-h-[60vh] text-sm ${lightMode ? 'bg-gray-100 border border-gray-200 text-gray-800' : 'bg-gray-900 border border-gray-700 text-gray-300'}`}>
         {JSON.stringify(project, null, 2)}
       </pre>
     </div>

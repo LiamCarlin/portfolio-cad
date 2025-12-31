@@ -140,6 +140,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   const [bannerImageData, setBannerImageData] = useState<string | null>(null);
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [showExperience, setShowExperience] = useState(false);
   
   // Wait for hydration to complete before rendering theme-dependent styles
   useEffect(() => {
@@ -148,6 +149,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   
   // Always use dark mode until hydration completes to prevent flash
   const lightMode = isHydrated ? theme === 'light' : false;
+  const heroIconFilter = (!lightMode || bannerImageData) ? 'invert(1) brightness(1.8)' : 'none';
   
   // Load banner image: prefer exported URL, fall back to IndexedDB
   useEffect(() => {
@@ -177,12 +179,13 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   }, [welcomePageData.bannerImageId, welcomePageData.bannerImageUrl]);
   
   return (
+    <>
     <div className={`min-h-screen ${lightMode ? 'bg-gray-100' : 'bg-gray-950'}`}>
       {/* Hero Section */}
       <div className={`relative overflow-hidden ${lightMode ? 'bg-white' : 'bg-gray-900'}`}>
         {/* Banner Image */}
         {bannerImageData && !isLoadingBanner && (
-          <div className="absolute inset-0 h-[500px]">
+          <div className="absolute inset-0">
             <img 
               src={bannerImageData} 
               alt="Banner"
@@ -236,6 +239,17 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
               <p className="text-gray-50 text-base max-w-xl mb-6" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
                 {welcomePageData.bio}
               </p>
+
+              {/* Experience CTA */}
+              <div className="mt-2 mb-6">
+                <button
+                  onClick={() => setShowExperience(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium shadow-md transition-colors"
+                >
+                  <span>View Experience</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
               
               {/* Links */}
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
@@ -253,6 +267,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                             src={link.icon} 
                             alt={link.label || link.platform}
                             className="w-12 h-12 rounded-lg object-cover hover:shadow-lg transition-all"
+                            style={{ filter: heroIconFilter }}
                           />
                         ) : (
                           <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-semibold transition-colors ${
@@ -263,7 +278,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                             ✉️
                           </div>
                         )}
-                        <span className="text-xs font-medium whitespace-nowrap group-hover:text-blue-500 transition-colors">
+                        <span className="sr-only">
                           {link.label || 'Email'}
                         </span>
                       </a>
@@ -284,6 +299,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                           src={link.icon} 
                           alt={link.label || link.platform}
                           className="w-12 h-12 rounded-lg object-cover hover:shadow-lg transition-all"
+                          style={{ filter: heroIconFilter }}
                         />
                       ) : (
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-semibold transition-colors ${
@@ -301,7 +317,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                           {link.platform === 'phone' && <Phone size={18} />}
                         </div>
                       )}
-                      <span className="text-xs font-medium whitespace-nowrap group-hover:text-blue-500 transition-colors">
+                      <span className="sr-only">
                         {link.label || link.platform}
                       </span>
                     </a>
@@ -426,6 +442,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                       src={link.icon} 
                       alt={link.label || link.platform}
                       className="w-6 h-6 rounded object-cover"
+                      style={{ filter: lightMode ? 'none' : 'invert(1) brightness(1.8)' }}
                     />
                   </a>
                 );
@@ -435,5 +452,13 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
         </div>
       </div>
     </div>
+    {/* Experience Modal */}
+    {showExperience && (
+      (() => {
+        const ExperienceModal = require('@/components/overlays/ExperienceModal').default;
+        return <ExperienceModal onClose={() => setShowExperience(false)} />;
+      })()
+    )}
+  </>
   );
 }

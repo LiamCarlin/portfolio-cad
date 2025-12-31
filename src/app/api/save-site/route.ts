@@ -45,7 +45,7 @@ const writeImageFromDataUrl = async (uploadsDir: string, dataUrl: string, filena
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { projects, welcomePageData, bannerImageData, profileImageData } = body ?? {};
+    const { projects, welcomePageData, bannerImageData, profileImageData, experienceEntries } = body ?? {};
 
     if (!projects || !Array.isArray(projects)) {
       return NextResponse.json({ error: 'projects must be an array' }, { status: 400 });
@@ -101,9 +101,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // Process experience entries logos
+    const processedExperience = Array.isArray(experienceEntries) ? await Promise.all(experienceEntries.map(async (exp: any) => {
+      const clone = { ...exp };
+      if (clone.logoFile && typeof clone.logoFile === 'string' && clone.logoFile.startsWith('data:')) {
+        const url = await writeImageFromDataUrl(uploadsDir, clone.logoFile, `exp-${clone.id}-logo`);
+        if (url) {
+          clone.logoUrl = url;
+          clone.logoFile = undefined;
+        }
+      }
+      return clone;
+    })) : [];
+
     const payload = {
       projects: processedProjects,
       welcomePageData: processedWelcome,
+      experienceEntries: processedExperience,
       savedAt: new Date().toISOString(),
     };
 

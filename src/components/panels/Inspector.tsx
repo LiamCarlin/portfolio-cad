@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import {
   ChevronLeft,
@@ -766,3 +766,4 @@ function AggregatedStats({ subsystems, lightMode }: { subsystems: Subsystem[]; l
     </div>
   );
 }
+

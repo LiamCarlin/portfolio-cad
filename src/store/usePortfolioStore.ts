@@ -141,6 +141,9 @@ export interface CADAnnotation {
   color?: string;
   label?: string;
   cadAnnotations?: CADAnnotation[];
+  // Mesh selections captured from volume-based marking
+  selectedMeshNames?: string[];
+  selectedMeshIndices?: number[];
 }
 
 export interface Project {
@@ -239,10 +242,26 @@ export interface WelcomePageData {
   aboutContent: string;
 }
 
+// Professional experience entries (internships, jobs, roles)
+export interface ExperienceEntry {
+  id: string;
+  organization: string;
+  role: string;
+  startDate?: string; // ISO or human-readable
+  endDate?: string;   // undefined means present
+  location?: string;
+  description?: string;
+  link?: string;
+  // Company/organization logo
+  logoFile?: string; // Base64 data URL (admin/local editing)
+  logoUrl?: string;  // Public URL for exported site (under public/uploads)
+}
+
 interface PortfolioState {
   // Data
   projects: Project[];
   welcomePageData: WelcomePageData;
+  experienceEntries: ExperienceEntry[];
   
   // Selection
   selectedProjectId: string | null;
@@ -354,6 +373,8 @@ interface PortfolioState {
   updateWelcomePageData: (updates: Partial<WelcomePageData>) => void;
   setBannerImageId: (imageId: string | undefined) => void;
   setProfileImageId: (imageId: string | undefined) => void;
+  // Experience actions
+  setExperienceEntries: (items: ExperienceEntry[]) => void;
 }
 
 // Helper to find subsystem in nested structure
@@ -373,6 +394,7 @@ export const usePortfolioStore = create<PortfolioState>()(
     (set, get) => ({
       // Initial state
       projects: [],
+      experienceEntries: [],
       
       selectedProjectId: null,
       selectedSubsystemIds: [],
@@ -445,6 +467,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       
       // Actions
       setProjects: (projects) => set({ projects }),
+      setExperienceEntries: (items) => set({ experienceEntries: items }),
       
       selectProject: (projectId) => {
         const { rightPanelWidth } = get();

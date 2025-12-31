@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePortfolioStore, Project, WelcomePageData } from '@/store/usePortfolioStore';
+import { usePortfolioStore, Project, WelcomePageData, ExperienceEntry } from '@/store/usePortfolioStore';
 import { sampleProjects } from '@/data/sampleProjects';
 
 /**
@@ -12,6 +12,7 @@ export function useProjectsLoader() {
   const [isLoading, setIsLoading] = useState(true);
   const setProjects = usePortfolioStore((state) => state.setProjects);
   const updateWelcomePageData = usePortfolioStore((state) => state.updateWelcomePageData);
+  const setExperienceEntries = usePortfolioStore((state) => state.setExperienceEntries);
   const selectProject = usePortfolioStore((state) => state.selectProject);
   const projects = usePortfolioStore((state) => state.projects);
 
@@ -35,6 +36,9 @@ export function useProjectsLoader() {
           }
           if (json.welcomePageData) {
             updateWelcomePageData(json.welcomePageData as WelcomePageData);
+          }
+          if (Array.isArray(json.experienceEntries)) {
+            setExperienceEntries(json.experienceEntries as ExperienceEntry[]);
           }
         }
       } catch (e) {
