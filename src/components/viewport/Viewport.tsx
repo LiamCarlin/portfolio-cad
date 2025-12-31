@@ -304,14 +304,14 @@ function SubsystemHighlightModel({
     const byName = new Map<string, Set<string>>();
     const byIndex = new Map<number, Set<string>>();
     for (const selection of selections) {
-      for (const name of selection.meshNames) {
+      selection.meshNames.forEach((name) => {
         if (!byName.has(name)) byName.set(name, new Set());
         byName.get(name)!.add(selection.subsystem.id);
-      }
-      for (const index of selection.meshIndices) {
+      });
+      selection.meshIndices.forEach((index) => {
         if (!byIndex.has(index)) byIndex.set(index, new Set());
         byIndex.get(index)!.add(selection.subsystem.id);
-      }
+      });
     }
     return { byName, byIndex };
   }, [selections]);
