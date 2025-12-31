@@ -523,7 +523,6 @@ export default function Viewport({ className }: ViewportProps) {
   // Import content view components
   const { 
     ProjectContentView, 
-    DrawingView, 
     TimelineView, 
     ResultsView, 
     MediaView
@@ -545,12 +544,6 @@ export default function Viewport({ className }: ViewportProps) {
   // Render different views based on viewMode
   if (viewMode !== 'assembly' && selectedProject) {
     switch (viewMode) {
-      case 'drawing':
-        return (
-          <div className={className}>
-            <DrawingView project={selectedProject} lightMode={lightMode} />
-          </div>
-        );
       case 'timeline':
         return (
           <div className={className}>

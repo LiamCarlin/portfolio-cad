@@ -35,6 +35,7 @@ import dynamic from 'next/dynamic';
 import { FileUpload, MultiImageUpload, ImagePreview } from '@/components/admin/FileUpload';
 import { sampleProjects } from '@/data/sampleProjects';
 import { getImageDataUrl } from '@/lib/imageStorage';
+import { PROJECT_ICONS } from '@/lib/projectIcons';
 
 // Dynamically import CAD viewer to avoid SSR issues
 const CADModelViewer = dynamic(
@@ -138,6 +139,7 @@ const createEmptyProject = (): Project => ({
   currentConfiguration: 'default',
   contentBlocks: [],
   thumbnail: '',
+  iconKey: undefined,
   // New fields
   cadModel: undefined,
   images: [],
@@ -2048,6 +2050,7 @@ function CADModelEditor({ project, onUpdate, lightMode }: { project: Project; on
 // Images Editor - Upload project images
 function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const images = project.images || [];
+  const [iconQuery, setIconQuery] = useState('');
 
   const handleImageAdd = useCallback((file: File, dataUrl: string) => {
     const newImage: UploadedImage = {
@@ -2073,6 +2076,10 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
   const handleThumbnailUpload = useCallback((file: File, dataUrl: string) => {
     onUpdate({ thumbnailFile: dataUrl, thumbnail: undefined });
   }, [onUpdate]);
+  
+  const filteredIcons = PROJECT_ICONS.filter((icon) =>
+    icon.label.toLowerCase().includes(iconQuery.trim().toLowerCase())
+  );
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -2109,6 +2116,53 @@ function ImagesEditor({ project, onUpdate, lightMode }: { project: Project; onUp
             />
           </div>
         )}
+      </div>
+
+      {/* Project Icon */}
+      <div>
+        <h4 className={`font-medium mb-3 ${lightMode ? 'text-gray-900' : 'text-white'}`}>Project Icon</h4>
+        <div className="flex items-center gap-3 mb-3">
+          <input
+            type="text"
+            value={iconQuery}
+            onChange={(e) => setIconQuery(e.target.value)}
+            placeholder="Search icons..."
+            className={`flex-1 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
+          />
+          <button
+            onClick={() => onUpdate({ iconKey: undefined })}
+            className={`px-3 py-2 text-xs rounded-lg ${lightMode ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
+          >
+            Clear
+          </button>
+        </div>
+        <div className={`rounded-lg border ${lightMode ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-900/40'}`}>
+          <div className="grid grid-cols-6 md:grid-cols-8 gap-2 p-3 max-h-56 overflow-y-auto">
+            {filteredIcons.map(({ key, Icon, label }) => (
+              <button
+                key={key}
+                onClick={() => onUpdate({ iconKey: key })}
+                className={`flex items-center justify-center w-10 h-10 rounded-lg border transition-colors ${
+                  project.iconKey === key
+                    ? lightMode
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-blue-400 bg-blue-900/40 text-blue-200'
+                    : lightMode
+                      ? 'border-gray-200 text-gray-600 hover:bg-gray-100'
+                      : 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                }`}
+                title={label}
+              >
+                <Icon size={18} />
+              </button>
+            ))}
+          </div>
+          {filteredIcons.length === 0 && (
+            <div className={`px-3 py-4 text-xs ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              No icons match that search.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Project Images Gallery */}

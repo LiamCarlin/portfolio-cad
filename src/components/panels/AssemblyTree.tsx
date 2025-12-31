@@ -16,6 +16,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { usePortfolioStore, Project, Subsystem } from '@/store/usePortfolioStore';
+import { PROJECT_ICON_MAP } from '@/lib/projectIcons';
 
 const categoryIcons = {
   robotics: Cpu,
@@ -106,182 +107,55 @@ function TreeNode({ subsystem, projectId, depth = 0, expanded, toggleExpanded }:
 
 interface ProjectNodeProps {
   project: Project;
-  expanded: Set<string>;
-  toggleExpanded: (id: string) => void;
-  collapseOthersAndExpand: (projectId: string) => void;
 }
 
-function ProjectNode({ project, expanded, toggleExpanded, collapseOthersAndExpand }: ProjectNodeProps) {
+function ProjectNode({ project }: ProjectNodeProps) {
   const {
     selectedProjectId,
     selectProject,
-    showProjectOverview,
-    setShowProjectOverview,
     theme,
-    selectedTaggedPartId,
-    hoveredTaggedPartId,
-    selectTaggedPart,
-    setHoveredTaggedPart,
   } = usePortfolioStore();
   
   const isSelected = selectedProjectId === project.id;
-  const isExpanded = expanded.has(project.id);
-  
-  // Auto-expand when this project is selected
-  React.useEffect(() => {
-    if (isSelected && !isExpanded) {
-      collapseOthersAndExpand(project.id);
-    }
-  }, [isSelected, isExpanded, project.id, collapseOthersAndExpand]);
+  const hasActiveProject = selectedProjectId !== null;
   const CategoryIcon = categoryIcons[project.category];
+  const ProjectIcon = project.iconKey ? PROJECT_ICON_MAP[project.iconKey] : null;
   const lightMode = theme === 'light';
-  const hasContentBlocks = project.contentBlocks && project.contentBlocks.length > 0;
-  const taggedParts = project.cadModel?.taggedParts || [];
   
   const handleProjectSelect = () => {
     selectProject(project.id);
-    collapseOthersAndExpand(project.id);
   };
   
   return (
-    <div className="mb-1">
+    <div className={`mb-2 pb-2 ${lightMode ? 'border-b border-gray-200' : 'border-b border-gray-800'}`}>
       <div
         className={`
-          flex items-center gap-2 py-2 px-2 cursor-pointer rounded-lg transition-all
+          flex items-center gap-2 py-2 px-2 cursor-pointer rounded-lg transition-all border-l-4
           ${isSelected 
-            ? lightMode ? 'bg-gray-200 border border-blue-500' : 'bg-gray-700 border border-blue-500' 
-            : lightMode ? 'hover:bg-gray-200 border border-transparent' : 'hover:bg-gray-800 border border-transparent'
+            ? lightMode ? 'bg-gray-200 border-blue-500 text-gray-900' : 'bg-gray-700 border-blue-500 text-white' 
+            : lightMode ? 'hover:bg-gray-200 border-transparent text-gray-800' : 'hover:bg-gray-800 border-transparent text-gray-200'
           }
+          ${!isSelected && hasActiveProject ? 'opacity-70 hover:opacity-100' : ''}
         `}
         onClick={handleProjectSelect}
       >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleExpanded(project.id);
-          }}
-          className={`p-0.5 rounded ${lightMode ? 'hover:bg-gray-300 text-gray-500' : 'hover:bg-gray-600 text-gray-400'}`}
-        >
-          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </button>
-        
-        <CategoryIcon size={16} className={categoryColors[project.category]} />
+        {ProjectIcon ? (
+          <ProjectIcon size={16} className={categoryColors[project.category]} />
+        ) : (
+          <CategoryIcon size={16} className={categoryColors[project.category]} />
+        )}
         
         <div className="flex-1 min-w-0">
           <div className={`text-sm font-medium truncate ${lightMode ? 'text-gray-900' : 'text-white'}`}>{project.name}</div>
           <div className={`text-xs ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}>{project.year}</div>
         </div>
+
+        {isSelected && (
+          <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full ${lightMode ? 'bg-blue-100 text-blue-700' : 'bg-blue-900/40 text-blue-200'}`}>
+            Active
+          </span>
+        )}
       </div>
-      
-      {/* Expanded content: CAD Model, Overview + Subsystems */}
-      {isExpanded && (
-        <div className={`ml-2 border-l pl-2 mt-1 ${lightMode ? 'border-gray-300' : 'border-gray-700'}`}>
-          {/* 3D Model - First item (default) */}
-          <div
-            className={`
-              flex items-center gap-1 py-1.5 px-2 cursor-pointer rounded transition-colors mb-1
-              ${isSelected && !showProjectOverview 
-                ? 'bg-blue-600 text-white' 
-                : lightMode ? 'text-gray-700 hover:bg-gray-200/50' : 'text-gray-300 hover:bg-gray-700/50'}
-            `}
-            onClick={() => {
-              selectProject(project.id);
-              collapseOthersAndExpand(project.id);
-              setShowProjectOverview(false);
-            }}
-          >
-            <Box size={14} className={isSelected && !showProjectOverview ? 'text-white' : 'text-green-400'} />
-            <span className="text-sm font-medium">3D Model</span>
-            {project.cadModel && (
-              <span className={`text-xs ml-auto ${isSelected && !showProjectOverview ? 'text-blue-200' : lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {project.cadModel.name}
-              </span>
-            )}
-          </div>
-
-          {/* Project Overview - Second item */}
-          <div
-            className={`
-              flex items-center gap-1 py-1.5 px-2 cursor-pointer rounded transition-colors mb-1
-              ${isSelected && showProjectOverview 
-                ? 'bg-blue-600 text-white' 
-                : lightMode ? 'text-gray-700 hover:bg-gray-200/50' : 'text-gray-300 hover:bg-gray-700/50'}
-            `}
-            onClick={() => {
-              selectProject(project.id);
-              collapseOthersAndExpand(project.id);
-              setShowProjectOverview(true);
-            }}
-          >
-            <FileText size={14} className={isSelected && showProjectOverview ? 'text-white' : 'text-blue-400'} />
-            <span className="text-sm font-medium">Project Overview</span>
-            {hasContentBlocks && (
-              <span className={`text-xs ml-auto ${isSelected && showProjectOverview ? 'text-blue-200' : lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {project.contentBlocks!.length} blocks
-              </span>
-            )}
-          </div>
-          
-          {taggedParts.length > 0 && (
-            <div className="mt-1">
-              <div className={`flex items-center gap-2 px-2 py-1 text-xs ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                <Tag size={12} className="text-blue-400" />
-                <span>Tagged Parts</span>
-                <span className="ml-auto">{taggedParts.length}</span>
-              </div>
-              <div className="space-y-1">
-                {taggedParts.map((part) => {
-                  const isSelectedPart = selectedTaggedPartId === part.id;
-                  const isHoveredPart = hoveredTaggedPartId === part.id;
-                  return (
-                    <div
-                      key={part.id}
-                      className={`flex items-center gap-2 py-1 px-2 rounded border cursor-pointer transition-colors ${
-                        isSelectedPart
-                          ? lightMode
-                            ? 'bg-blue-100 border-blue-400 text-blue-900'
-                            : 'bg-blue-900/40 border-blue-500 text-white'
-                          : isHoveredPart
-                            ? lightMode
-                              ? 'bg-gray-100 border-gray-200 text-gray-900'
-                              : 'bg-gray-800 border-gray-700 text-white'
-                            : lightMode
-                              ? 'border-gray-200 hover:bg-gray-100 text-gray-700'
-                              : 'border-gray-700 hover:bg-gray-800 text-gray-300'
-                      }`}
-                      onClick={() => {
-                        selectProject(project.id);
-                        collapseOthersAndExpand(project.id);
-                        setShowProjectOverview(false);
-                        selectTaggedPart(part.id);
-                      }}
-                      onMouseEnter={() => setHoveredTaggedPart(part.id)}
-                      onMouseLeave={() => setHoveredTaggedPart(null)}
-                    >
-                      <span
-                        className="w-3 h-3 rounded-full border border-black/10"
-                        style={{ backgroundColor: part.color }}
-                      />
-                      <span className="text-sm truncate flex-1">{part.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Subsystems */}
-          {project.subsystems.map((subsystem) => (
-            <TreeNode
-              key={subsystem.id}
-              subsystem={subsystem}
-              projectId={project.id}
-              expanded={expanded}
-              toggleExpanded={toggleExpanded}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -292,14 +166,32 @@ interface AssemblyTreeProps {
 }
 
 export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
-  const { projects, searchQuery, setSearchQuery, categoryFilter, setCategoryFilter, leftPanelCollapsed, togglePanel, theme } = usePortfolioStore();
+  const { 
+    projects, 
+    searchQuery, 
+    setSearchQuery, 
+    categoryFilter, 
+    setCategoryFilter, 
+    leftPanelCollapsed, 
+    togglePanel, 
+    theme, 
+    selectedProjectId,
+    showProjectOverview,
+    setShowProjectOverview,
+    selectedTaggedPartId,
+    hoveredTaggedPartId,
+    selectTaggedPart,
+    setHoveredTaggedPart,
+    selectProject,
+  } = usePortfolioStore();
   
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  const [activeSubsystemExpanded, setActiveSubsystemExpanded] = useState<Set<string>>(new Set());
   const lightMode = theme === 'light';
+  const activeProject = projects.find((p) => p.id === selectedProjectId) || null;
   
-  const toggleExpanded = (id: string) => {
-    setExpanded((prev) => {
+  const toggleActiveSubsystem = (id: string) => {
+    setActiveSubsystemExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -310,22 +202,9 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
     });
   };
   
-  // Function to collapse all projects except the specified one
-  const collapseOthersAndExpand = (projectId: string) => {
-    setExpanded((prev) => {
-      const next = new Set<string>();
-      // Keep only the selected project expanded (and its subsystems if they were expanded)
-      // Filter to only keep IDs that are subsystems of the selected project
-      const selectedProject = projects.find(p => p.id === projectId);
-      if (selectedProject) {
-        // Add the project itself
-        next.add(projectId);
-        // Optionally keep expanded subsystems (but for now, let's just expand the project)
-        // If you want to keep subsystem expansions, you'd need to check if IDs belong to this project
-      }
-      return next;
-    });
-  };
+  React.useEffect(() => {
+    setActiveSubsystemExpanded(new Set());
+  }, [activeProject?.id]);
   
   // Filter projects based on search and category
   const filteredProjects = useMemo(() => {
@@ -445,10 +324,131 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
             })}
           </div>
         )}
+
+        {activeProject && (
+          <div className={`mt-3 rounded-lg px-3 py-2 border ${lightMode ? 'border-blue-200 bg-blue-50' : 'border-blue-900/40 bg-blue-900/20'}`}>
+            <div className={`text-[10px] uppercase tracking-wide ${lightMode ? 'text-blue-700' : 'text-blue-300'}`}>Active Project</div>
+            <div className="flex items-center gap-2 mt-1">
+              {activeProject.iconKey && PROJECT_ICON_MAP[activeProject.iconKey]
+                ? React.createElement(PROJECT_ICON_MAP[activeProject.iconKey], { size: 14, className: categoryColors[activeProject.category] })
+                : React.createElement(categoryIcons[activeProject.category], { size: 14, className: categoryColors[activeProject.category] })}
+              <div className={`text-sm font-medium truncate ${lightMode ? 'text-gray-900' : 'text-white'}`}>{activeProject.name}</div>
+              <span className={`text-xs ml-auto ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>{activeProject.year}</span>
+            </div>
+
+            <div
+              className={`mt-3 rounded-lg border ${lightMode ? 'border-gray-200 bg-white' : 'border-gray-700 bg-gray-900/40'} flex flex-col`}
+              style={{ height: '250px' }}
+            >
+              <div className="p-2 space-y-1">
+                <div
+                  className={`
+                    flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors
+                    ${!showProjectOverview 
+                      ? 'bg-blue-600 text-white' 
+                      : lightMode ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-300 hover:bg-gray-800'}
+                  `}
+                  onClick={() => {
+                    selectProject(activeProject.id);
+                    setShowProjectOverview(false);
+                  }}
+                >
+                  <Box size={14} className={!showProjectOverview ? 'text-white' : 'text-green-500'} />
+                  <span className="text-sm font-medium">3D Model</span>
+                </div>
+
+                <div
+                  className={`
+                    flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors
+                    ${showProjectOverview 
+                      ? 'bg-blue-600 text-white' 
+                      : lightMode ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-300 hover:bg-gray-800'}
+                  `}
+                  onClick={() => {
+                    selectProject(activeProject.id);
+                    setShowProjectOverview(true);
+                  }}
+                >
+                  <FileText size={14} className={showProjectOverview ? 'text-white' : 'text-blue-500'} />
+                  <span className="text-sm font-medium">Project Overview</span>
+                </div>
+              </div>
+
+              {activeProject.cadModel?.taggedParts?.length ? (
+                <div className={`border-t px-2 pb-2 flex-shrink-0 ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}>
+                  <div className={`flex items-center gap-2 px-2 py-1 text-xs ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                    <Tag size={12} className="text-blue-400" />
+                    <span>Tagged Parts</span>
+                    <span className="ml-auto">{activeProject.cadModel.taggedParts.length}</span>
+                  </div>
+                  <div className="space-y-1 pr-1">
+                    {activeProject.cadModel.taggedParts.map((part) => {
+                      const isSelectedPart = selectedTaggedPartId === part.id;
+                      const isHoveredPart = hoveredTaggedPartId === part.id;
+                      return (
+                        <div
+                          key={part.id}
+                          className={`flex items-center gap-2 py-1 px-2 rounded border cursor-pointer transition-colors ${
+                            isSelectedPart
+                              ? lightMode
+                                ? 'bg-blue-100 border-blue-400 text-blue-900'
+                                : 'bg-blue-900/40 border-blue-500 text-white'
+                              : isHoveredPart
+                                ? lightMode
+                                  ? 'bg-gray-100 border-gray-200 text-gray-900'
+                                  : 'bg-gray-800 border-gray-700 text-white'
+                                : lightMode
+                                  ? 'border-gray-200 hover:bg-gray-100 text-gray-700'
+                                  : 'border-gray-700 hover:bg-gray-800 text-gray-300'
+                          }`}
+                          onClick={() => {
+                            selectProject(activeProject.id);
+                            setShowProjectOverview(false);
+                            selectTaggedPart(part.id);
+                          }}
+                          onMouseEnter={() => setHoveredTaggedPart(part.id)}
+                          onMouseLeave={() => setHoveredTaggedPart(null)}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full border border-black/10"
+                            style={{ backgroundColor: part.color }}
+                          />
+                          <span className="text-sm truncate flex-1">{part.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className={`border-t px-2 py-2 ${lightMode ? 'border-gray-200' : 'border-gray-700'} flex-1 min-h-0 overflow-hidden flex flex-col`}>
+                <div className={`text-[11px] uppercase tracking-wide mb-2 ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>Subsystems</div>
+                <div className="space-y-1 pr-1 overflow-y-auto min-h-0 flex-1">
+                  {activeProject.subsystems.map((subsystem) => (
+                    <TreeNode
+                      key={subsystem.id}
+                      subsystem={subsystem}
+                      projectId={activeProject.id}
+                      expanded={activeSubsystemExpanded}
+                      toggleExpanded={toggleActiveSubsystem}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Tree */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2 relative">
+        {filteredProjects.length > 0 && (
+          <div className={`sticky top-0 z-10 px-2 py-2 ${lightMode ? 'bg-white' : 'bg-gray-900'}`}>
+            <div className={`text-[10px] uppercase tracking-wide ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              All Projects
+            </div>
+          </div>
+        )}
         {filteredProjects.length === 0 ? (
           <div className={`text-center text-sm py-8 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
             No projects found
@@ -458,11 +458,11 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
             <ProjectNode
               key={project.id}
               project={project}
-              expanded={expanded}
-              toggleExpanded={toggleExpanded}
-              collapseOthersAndExpand={collapseOthersAndExpand}
             />
           ))
+        )}
+        {filteredProjects.length > 0 && (
+          <div className={`pointer-events-none sticky bottom-0 h-8 bg-gradient-to-t ${lightMode ? 'from-white' : 'from-gray-900'} to-transparent`} />
         )}
       </div>
       

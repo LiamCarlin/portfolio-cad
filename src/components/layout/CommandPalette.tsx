@@ -57,10 +57,9 @@ export default function CommandPalette() {
     // View mode commands
     const viewModes: { mode: ViewMode; label: string; shortcut: string }[] = [
       { mode: 'assembly', label: 'Assembly View', shortcut: '1' },
-      { mode: 'drawing', label: 'Drawing View', shortcut: '2' },
-      { mode: 'timeline', label: 'Timeline View', shortcut: '3' },
-      { mode: 'results', label: 'Results View', shortcut: '4' },
-      { mode: 'media', label: 'Media View', shortcut: '5' },
+      { mode: 'timeline', label: 'Timeline View', shortcut: '2' },
+      { mode: 'results', label: 'Results View', shortcut: '3' },
+      { mode: 'media', label: 'Media View', shortcut: '4' },
     ];
     
     viewModes.forEach(({ mode, label, shortcut }) => {

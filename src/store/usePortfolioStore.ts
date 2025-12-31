@@ -174,6 +174,7 @@ export interface Project {
   currentConfiguration: string;
   thumbnail?: string;
   thumbnailFile?: string; // Base64 for uploaded thumbnail
+  iconKey?: string;
   contentBlocks?: ContentBlock[];
   // Extended project details
   teamSize?: number;
@@ -190,7 +191,7 @@ export interface Configuration {
   description: string;
 }
 
-export type ViewMode = 'assembly' | 'drawing' | 'timeline' | 'results' | 'media';
+export type ViewMode = 'assembly' | 'timeline' | 'results' | 'media';
 export type ToolMode = 'select' | 'measure' | 'explode' | 'tutorial';
 export type ThemeMode = 'dark' | 'light';
 
@@ -596,12 +597,6 @@ export const usePortfolioStore = create<PortfolioState>()(
             condition: { type: 'explode', value: '0.5' },
             completed: false,
           },
-          {
-            id: 'drawing',
-            instruction: 'Switch to the Drawing tab',
-            condition: { type: 'tab', value: 'drawing' },
-            completed: false,
-          },
         ];
         
         set({
@@ -890,8 +885,8 @@ if (typeof window !== 'undefined') {
     }
     
     // Number keys 1-5 for view modes
-    const viewModes: ViewMode[] = ['assembly', 'drawing', 'timeline', 'results', 'media'];
-    if (e.key >= '1' && e.key <= '5') {
+    const viewModes: ViewMode[] = ['assembly', 'timeline', 'results', 'media'];
+    if (e.key >= '1' && e.key <= '4') {
       e.preventDefault();
       store.setViewMode(viewModes[parseInt(e.key) - 1]);
     }

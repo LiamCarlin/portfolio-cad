@@ -32,7 +32,7 @@ export default function Timeline({ className, style }: TimelineProps) {
     togglePanel('bottom');
   };
   
-  const expandedHeight = 140;
+  const expandedHeight = 150;
   const collapsedHeight = 32;
   
   return (
@@ -69,29 +69,31 @@ export default function Timeline({ className, style }: TimelineProps) {
       
       {/* Timeline content - only show when not collapsed */}
       {!bottomPanelCollapsed && (
-        <div className="flex-1 overflow-x-auto overflow-y-hidden relative">
+        <div className="flex-1 overflow-x-auto overflow-y-auto relative">
           {!selectedProject ? (
             <div className={`h-full flex items-center justify-center text-sm ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
               Select a project to view timeline
             </div>
           ) : (
-            <div className="px-4 h-full flex items-center">
-              {/* Timeline track */}
-              <div className="relative flex items-center gap-2 w-full">
-                {/* Connection line */}
-                <div className={`absolute top-1/2 left-0 right-0 h-0.5 ${lightMode ? 'bg-gray-300' : 'bg-gray-700'} -translate-y-1/2`} />
-                
-                {selectedProject.milestones.map((milestone, index) => (
-                  <MilestoneNode
-                    key={milestone.id}
-                    milestone={milestone}
-                    index={index}
-                    total={selectedProject.milestones.length}
-                    isLast={index === selectedProject.milestones.length - 1}
-                    containerRef={containerRef}
-                    lightMode={lightMode}
-                  />
-                ))}
+            <div className="px-4 h-full flex flex-col gap-3 py-3">
+              {/* Timeline track (sticky) */}
+              <div className={`sticky top-0 z-10 py-2 ${lightMode ? 'bg-white' : 'bg-gray-900'}`}>
+                <div className="relative flex items-center gap-3 w-full">
+                  {/* Connection line */}
+                  <div className={`absolute top-1/2 left-0 right-0 h-0.5 ${lightMode ? 'bg-gray-300' : 'bg-gray-700'} -translate-y-1/2`} />
+                  
+                      {selectedProject.milestones.map((milestone, index) => (
+                        <MilestoneNode
+                          key={milestone.id}
+                          milestone={milestone}
+                          index={index}
+                          total={selectedProject.milestones.length}
+                          isLast={index === selectedProject.milestones.length - 1}
+                          containerRef={containerRef}
+                          lightMode={lightMode}
+                        />
+                      ))}
+                    </div>
               </div>
             </div>
           )}
@@ -181,7 +183,7 @@ function MilestoneNode({ milestone, index, total, isLast, containerRef, lightMod
     <div
       ref={nodeRef}
       className="relative flex flex-col items-center group"
-      style={{ minWidth: '140px' }}
+      style={{ minWidth: '170px' }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -212,8 +214,8 @@ function MilestoneNode({ milestone, index, total, isLast, containerRef, lightMod
       
       {/* Label */}
       <div className="mt-2 text-center">
-        <div className={`text-xs font-medium ${lightMode ? 'text-gray-900' : 'text-white'}`}>{milestone.name}</div>
-        <div className={`text-xs flex items-center justify-center gap-1 ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}>
+        <div className={`text-sm font-medium ${lightMode ? 'text-gray-900' : 'text-white'}`}>{milestone.name}</div>
+        <div className={`text-xs flex items-center justify-center gap-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
           <Calendar size={10} />
           {formattedDate}
         </div>

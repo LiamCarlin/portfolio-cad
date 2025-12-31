@@ -15,10 +15,9 @@ import { UserMenu, EditModeBanner } from '@/components/admin/UserMenu';
 
 const viewTabs: { id: ViewMode; label: string; shortcut: string }[] = [
   { id: 'assembly', label: 'Assembly', shortcut: '1' },
-  { id: 'drawing', label: 'Drawing', shortcut: '2' },
-  { id: 'timeline', label: 'Timeline', shortcut: '3' },
-  { id: 'results', label: 'Results', shortcut: '4' },
-  { id: 'media', label: 'Media', shortcut: '5' },
+  { id: 'timeline', label: 'Timeline', shortcut: '2' },
+  { id: 'results', label: 'Results', shortcut: '3' },
+  { id: 'media', label: 'Media', shortcut: '4' },
 ];
 
 // Profile links - edit these for your portfolio

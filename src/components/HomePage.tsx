@@ -18,6 +18,7 @@ import {
 import { usePortfolioStore, Project } from '@/store/usePortfolioStore';
 import { getImageDataUrl } from '@/lib/imageStorage';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
+import { PROJECT_ICON_MAP } from '@/lib/projectIcons';
 
 const categoryIcons = {
   robotics: Cpu,
@@ -41,6 +42,7 @@ const categoryAccent = {
 function ProjectCard({ project, onClick, lightMode }: { project: Project; onClick: () => void; lightMode: boolean }) {
   const CategoryIcon = categoryIcons[project.category];
   const accentClass = categoryAccent[project.category];
+  const ProjectIcon = project.iconKey ? PROJECT_ICON_MAP[project.iconKey] : null;
   
   // Get thumbnail - use project thumbnail, first image, or placeholder
   const baseResolvedThumb = resolvePublicUrl(project.thumbnail);
@@ -76,7 +78,7 @@ function ProjectCard({ project, onClick, lightMode }: { project: Project; onClic
         
         {/* Category badge */}
         <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm ${lightMode ? 'bg-white/90 text-gray-900' : `bg-gray-900/80 ${accentClass}`}`}>
-          <CategoryIcon size={12} />
+          {ProjectIcon ? <ProjectIcon size={12} /> : <CategoryIcon size={12} />}
           <span className="text-xs font-medium capitalize">{project.category}</span>
         </div>
         
