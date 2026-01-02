@@ -25,6 +25,7 @@ import {
   MapPin,
   Briefcase,
   FileText,
+  LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePortfolioStore, Project, Subsystem, ContentBlock } from '@/store/usePortfolioStore';
@@ -33,7 +34,7 @@ import { getImageDataUrl } from '@/lib/imageStorage';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import { PROJECT_ICON_MAP } from '@/lib/projectIcons';
 
-const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const categoryIcons: Record<string, LucideIcon> = {
   robotics: Cpu,
   vehicles: Car,
   software: Code,
@@ -669,7 +670,7 @@ export default function SimplePortfolio() {
   
   // Get unique categories
   const categories = useMemo(() => {
-    const cats = [...new Set(projects.map(p => p.category))];
+    const cats = Array.from(new Set(projects.map(p => p.category)));
     return cats.sort();
   }, [projects]);
   
@@ -803,9 +804,9 @@ export default function SimplePortfolio() {
             </Link>
             
             {/* Resume link if available */}
-            {welcomePageData.socialLinks.some(l => l.platform === 'resume' || l.label?.toLowerCase().includes('resume')) && (
+            {welcomePageData.socialLinks.some(l => l.label?.toLowerCase().includes('resume')) && (
               <a
-                href={welcomePageData.socialLinks.find(l => l.platform === 'resume' || l.label?.toLowerCase().includes('resume'))?.url}
+                href={welcomePageData.socialLinks.find(l => l.label?.toLowerCase().includes('resume'))?.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-400 transition-colors"

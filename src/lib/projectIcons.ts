@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   Airplay,
@@ -41,7 +42,6 @@ import {
   Star,
   Target,
   Telescope,
-  Tool,
   Truck,
   Wrench,
   Zap,
@@ -90,7 +90,6 @@ const RAW_PROJECT_ICONS = [
   { key: 'star', label: 'Star', Icon: Star },
   { key: 'target', label: 'Target', Icon: Target },
   { key: 'telescope', label: 'Telescope', Icon: Telescope },
-  { key: 'tool', label: 'Tool', Icon: Tool },
   { key: 'truck', label: 'Truck', Icon: Truck },
   { key: 'wrench', label: 'Wrench', Icon: Wrench },
   { key: 'zap', label: 'Zap', Icon: Zap },
@@ -98,7 +97,7 @@ const RAW_PROJECT_ICONS = [
 
 export const PROJECT_ICONS = RAW_PROJECT_ICONS.filter((icon) => !!icon.Icon);
 
-export const PROJECT_ICON_MAP = PROJECT_ICONS.reduce<Record<string, (props: { size?: number; className?: string }) => JSX.Element>>(
+export const PROJECT_ICON_MAP = PROJECT_ICONS.reduce<Record<string, LucideIcon>>(
   (acc, icon) => {
     acc[icon.key] = icon.Icon;
     return acc;

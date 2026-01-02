@@ -16,13 +16,14 @@ import {
   Package,
   FileText,
   MapPin,
+  LucideIcon,
 } from 'lucide-react';
 import { usePortfolioStore, Project } from '@/store/usePortfolioStore';
 import { getImageDataUrl } from '@/lib/imageStorage';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import { PROJECT_ICON_MAP } from '@/lib/projectIcons';
 
-const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const categoryIcons: Record<string, LucideIcon> = {
   robotics: Cpu,
   vehicles: Car,
   software: Code,

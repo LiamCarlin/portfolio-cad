@@ -332,7 +332,7 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
             <div className={`text-[10px] uppercase tracking-wide ${lightMode ? 'text-blue-700' : 'text-blue-300'}`}>Active Project</div>
             <div className="flex items-center gap-2 mt-1">
               {activeProject.iconKey && PROJECT_ICON_MAP[activeProject.iconKey]
-                ? React.createElement(PROJECT_ICON_MAP[activeProject.iconKey], { size: 14, className: iconClass })
+                ? React.createElement(PROJECT_ICON_MAP[activeProject.iconKey], { size: 14, className: categoryColors[activeProject.category] })
                 : React.createElement(categoryIcons[activeProject.category], { size: 14, className: categoryColors[activeProject.category] })}
               <div className={`text-sm font-medium truncate ${lightMode ? 'text-gray-900' : 'text-white'}`}>{activeProject.name}</div>
               <span className={`text-xs ml-auto ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>{activeProject.year}</span>
