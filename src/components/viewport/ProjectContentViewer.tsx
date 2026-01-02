@@ -4,12 +4,14 @@ import React from 'react';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import {
   FileText,
+  Image as ImageIcon,
   User,
   Wrench,
   Target,
   Link as LinkIcon,
   Github,
   Video,
+  Play,
   Box,
   ExternalLink,
   Users,
@@ -125,6 +127,23 @@ function ContentBlockRenderer({ block, lightMode }: { block: ContentBlock; light
 export default function ProjectContentViewer({ project, lightMode = false }: ProjectContentViewerProps) {
   const contentBlocks = project.contentBlocks || [];
   const hasContent = contentBlocks.length > 0;
+  const uploadedImages = project.images || [];
+  const contentImages = project.contentBlocks?.filter(b => b.type === 'image').map(b => ({
+    id: b.id,
+    src: b.file || b.content,
+    caption: b.caption,
+  })) || [];
+  const galleryImages = project.contentBlocks?.filter(b => b.type === 'gallery').flatMap(b => [
+    ...(b.images || []).map((img, i) => ({ id: `${b.id}-url-${i}`, src: img, caption: undefined })),
+    ...(b.imageFiles || []).map((img, i) => ({ id: `${b.id}-file-${i}`, src: img, caption: undefined })),
+  ]) || [];
+  const videoUrl = project.links.video;
+  const allImages = [
+    ...uploadedImages.map(i => ({ id: i.id, src: i.data, caption: i.caption })),
+    ...contentImages,
+    ...galleryImages,
+  ].filter(i => i.src);
+  const hasMedia = !!videoUrl || allImages.length > 0;
 
   return (
     <div className={`h-full overflow-y-auto ${lightMode ? 'bg-gray-50' : 'bg-gray-900'}`}>
@@ -283,31 +302,6 @@ export default function ProjectContentViewer({ project, lightMode = false }: Pro
           </div>
         )}
         
-        {/* Gallery */}
-        {project.images && project.images.length > 0 && (
-          <div className="mb-8">
-            <div className={`text-xs uppercase tracking-wider mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              Gallery ({project.images.length} images)
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {project.images.map((img: any, i: number) => (
-                <div key={img.id || i} className="relative group">
-                  <img
-                    src={img.data}
-                    alt={img.caption || `Image ${i + 1}`}
-                    className="w-full h-48 object-cover rounded-lg shadow-md hover:shadow-xl transition-all"
-                  />
-                  {img.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                      {img.caption}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        
         {/* Links */}
         {(project.links.github || project.links.video || project.links.onshape || project.links.writeup) && (
           <div className="mt-8 pt-8 border-t border-gray-700/50">
@@ -383,9 +377,75 @@ export default function ProjectContentViewer({ project, lightMode = false }: Pro
             </div>
           </div>
         )}
+
+        {/* Media */}
+        {hasMedia && (
+          <div className="mt-10 pt-8 border-t border-gray-700/50">
+            <div className={`text-xs uppercase tracking-wider mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <ImageIcon size={14} />
+              Media
+            </div>
+            {videoUrl && (
+              <div className="mb-6">
+                <div className={`text-xs uppercase tracking-wider mb-3 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>Video</div>
+                {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
+                  <div className="aspect-video max-w-3xl">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]}`}
+                      className="w-full h-full rounded-xl shadow-lg"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <a
+                    href={videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                      lightMode
+                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    <Play size={16} />
+                    Watch Video
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </div>
+            )}
+            {allImages.length > 0 ? (
+              <div>
+                <div className={`text-xs uppercase tracking-wider mb-3 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Images ({allImages.length})
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {allImages.map((img) => (
+                    <div key={img.id} className="relative group">
+                      <img
+                        src={img.src}
+                        alt={img.caption || 'Project image'}
+                        className="w-full h-48 object-cover rounded-lg shadow-md hover:shadow-xl transition-all"
+                      />
+                      {img.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                          {img.caption}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className={`text-sm ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                No images uploaded yet.
+              </div>
+            )}
+          </div>
+        )}
         
         {/* No Content Message */}
-        {!hasContent && !project.challenge && !project.solution && (
+        {!hasContent && !project.challenge && !project.solution && !hasMedia && (
           <div className={`text-center py-16 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
             <FileText size={48} className="mx-auto mb-4 opacity-30" />
             <p className="text-lg mb-2">No detailed content yet</p>

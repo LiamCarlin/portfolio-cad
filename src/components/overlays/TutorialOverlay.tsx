@@ -21,7 +21,6 @@ export default function TutorialOverlay() {
     completeTutorialStep,
     selectedSubsystemIds,
     explodeAmount,
-    viewMode,
   } = usePortfolioStore();
   
   const currentStep = tutorialSteps[currentTutorialStep];
@@ -47,9 +46,6 @@ export default function TutorialOverlay() {
       case 'explode':
         conditionMet = explodeAmount >= parseFloat(currentStep.condition.value);
         break;
-      case 'tab':
-        conditionMet = viewMode === currentStep.condition.value;
-        break;
     }
     
     if (conditionMet && !currentStep.completed) {
@@ -61,7 +57,6 @@ export default function TutorialOverlay() {
     currentStep,
     selectedSubsystemIds,
     explodeAmount,
-    viewMode,
     completeTutorialStep,
     nextTutorialStep,
   ]);

@@ -34,6 +34,7 @@ const categoryColors = {
   other: 'text-gray-400',
 };
 
+
 interface TreeNodeProps {
   subsystem: Subsystem;
   projectId: string;
@@ -119,8 +120,9 @@ function ProjectNode({ project }: ProjectNodeProps) {
   const isSelected = selectedProjectId === project.id;
   const hasActiveProject = selectedProjectId !== null;
   const CategoryIcon = categoryIcons[project.category];
-  const ProjectIcon = project.iconKey ? PROJECT_ICON_MAP[project.iconKey] : null;
   const lightMode = theme === 'light';
+  const ProjectIcon = project.iconKey ? PROJECT_ICON_MAP[project.iconKey] : null;
+  const iconClass = lightMode ? 'text-gray-600' : 'text-gray-400';
   
   const handleProjectSelect = () => {
     selectProject(project.id);
@@ -140,7 +142,7 @@ function ProjectNode({ project }: ProjectNodeProps) {
         onClick={handleProjectSelect}
       >
         {ProjectIcon ? (
-          <ProjectIcon size={16} className={categoryColors[project.category]} />
+          <ProjectIcon size={16} className={iconClass} />
         ) : (
           <CategoryIcon size={16} className={categoryColors[project.category]} />
         )}
@@ -224,7 +226,7 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
   
   if (leftPanelCollapsed) {
     return (
-      <div className={`${className} w-10 ${lightMode ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'} border-r flex flex-col items-center py-4 gap-2`} style={style}>
+      <div className={`${className} w-10 ${lightMode ? 'bg-white/95 border-gray-200 backdrop-blur-sm' : 'bg-gray-900/95 border-gray-800 backdrop-blur-sm'} border-r flex flex-col items-center py-4 gap-2`} style={style}>
         <button
           onClick={() => togglePanel('left')}
           className={`p-2 ${lightMode ? 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' : 'text-gray-400 hover:text-white hover:bg-gray-800'} rounded transition-colors`}
@@ -251,9 +253,9 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
   }
   
   return (
-    <div className={`${className} ${lightMode ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'} border-r flex flex-col`} style={style}>
+    <div className={`${className} ${lightMode ? 'bg-white/95 border-gray-200 backdrop-blur-sm' : 'bg-gray-900/95 border-gray-800 backdrop-blur-sm'} border-r flex flex-col`} style={style}>
       {/* Header */}
-      <div className={`p-3 border-b ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}>
+      <div className={`p-3 border-b ${lightMode ? 'border-gray-200' : 'border-gray-800'}`}>
         <div className="flex items-center justify-between mb-3">
           <h2 className={`text-sm font-semibold ${lightMode ? 'text-gray-900' : 'text-white'}`}>Projects</h2>
           <button
@@ -272,10 +274,10 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
             placeholder="Search projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full text-sm rounded-lg pl-9 pr-3 py-2 border focus:border-blue-500 focus:outline-none ${
+            className={`w-full text-sm rounded-full pl-9 pr-3 py-2 border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${
               lightMode 
                 ? 'bg-gray-50 text-gray-900 placeholder-gray-400 border-gray-200' 
-                : 'bg-gray-800 text-white placeholder-gray-500 border-gray-700'
+                : 'bg-white/5 text-white placeholder-gray-500 border-white/10'
             }`}
           />
         </div>
@@ -330,7 +332,7 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
             <div className={`text-[10px] uppercase tracking-wide ${lightMode ? 'text-blue-700' : 'text-blue-300'}`}>Active Project</div>
             <div className="flex items-center gap-2 mt-1">
               {activeProject.iconKey && PROJECT_ICON_MAP[activeProject.iconKey]
-                ? React.createElement(PROJECT_ICON_MAP[activeProject.iconKey], { size: 14, className: categoryColors[activeProject.category] })
+                ? React.createElement(PROJECT_ICON_MAP[activeProject.iconKey], { size: 14, className: iconClass })
                 : React.createElement(categoryIcons[activeProject.category], { size: 14, className: categoryColors[activeProject.category] })}
               <div className={`text-sm font-medium truncate ${lightMode ? 'text-gray-900' : 'text-white'}`}>{activeProject.name}</div>
               <span className={`text-xs ml-auto ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>{activeProject.year}</span>
@@ -467,7 +469,7 @@ export default function AssemblyTree({ className, style }: AssemblyTreeProps) {
       </div>
       
       {/* Footer stats */}
-      <div className={`p-3 border-t text-xs ${lightMode ? 'border-gray-200 text-gray-400' : 'border-gray-700 text-gray-500'}`}>
+      <div className={`p-3 border-t text-xs ${lightMode ? 'border-gray-200 text-gray-400' : 'border-gray-800 text-gray-500'}`}>
         {filteredProjects.length} projects • {filteredProjects.reduce((acc, p) => acc + p.subsystems.length, 0)} assemblies
       </div>
     </div>

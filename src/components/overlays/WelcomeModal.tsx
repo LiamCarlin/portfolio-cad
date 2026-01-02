@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   X,
   MousePointer2,
@@ -15,6 +16,7 @@ import {
   Layers,
   Info,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 
 interface WelcomeModalProps {
@@ -33,12 +35,19 @@ const slides = [
           (think SolidWorks or Onshape). Instead of scrolling through pages, you'll 
           <span className="text-blue-400 font-medium"> explore projects as 3D assemblies</span>.
         </p>
-        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+        <div className="bg-white/5 rounded-xl p-4 border border-white/10">
           <p className="text-sm text-gray-400">
             💡 <strong className="text-white">Why?</strong> Because engineering projects 
             are best understood as systems with interconnected parts — just like in CAD.
           </p>
         </div>
+        <Link 
+          href="/simple"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-gray-200 hover:text-white transition-all mt-3"
+        >
+          <FileText size={16} />
+          <span>Prefer a simpler view? Click here for the traditional portfolio</span>
+        </Link>
       </div>
     ),
   },
@@ -183,14 +192,14 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-xl bg-gray-900 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+      <div className="relative w-full max-w-xl bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 border border-white/10 overflow-hidden">
         {/* Header gradient */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-blue-600/20 to-transparent pointer-events-none" />
 
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors z-10"
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all z-10"
         >
           <X size={20} />
         </button>
@@ -198,7 +207,7 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
         {/* Content */}
         <div className="relative p-8">
           {/* Icon */}
-          <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mb-6">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
             <SlideIcon size={32} className="text-white" />
           </div>
 
@@ -229,7 +238,7 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+          <div className="flex items-center justify-between pt-4 border-t border-white/10">
             <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
               <input
                 type="checkbox"
@@ -244,7 +253,7 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
               {currentSlide > 0 && (
                 <button
                   onClick={prevSlide}
-                  className="flex items-center gap-1 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                  className="flex items-center gap-1 px-4 py-2 text-gray-300 hover:text-white hover:bg-white/10 rounded-full transition-all"
                 >
                   <ChevronLeft size={16} />
                   Back
@@ -252,7 +261,7 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
               )}
               <button
                 onClick={nextSlide}
-                className="flex items-center gap-1 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-medium"
+                className="flex items-center gap-1 px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-full transition-all font-medium shadow-lg shadow-blue-500/20"
               >
                 {currentSlide < slides.length - 1 ? (
                   <>

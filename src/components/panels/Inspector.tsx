@@ -85,7 +85,7 @@ export default function Inspector({ className, style }: InspectorProps) {
   
   if (rightPanelCollapsed) {
     return (
-      <div className={`${className} w-10 ${lightMode ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'} border-l flex flex-col items-center py-4`} style={style}>
+      <div className={`${className} w-10 ${lightMode ? 'bg-white/95 border-gray-200 backdrop-blur-sm' : 'bg-gray-900/95 border-gray-800 backdrop-blur-sm'} border-l flex flex-col items-center py-4`} style={style}>
         <button
           onClick={() => togglePanel('right')}
           className={`p-2 rounded transition-colors ${lightMode ? 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
@@ -106,9 +106,9 @@ export default function Inspector({ className, style }: InspectorProps) {
   const showProjectOverview = selectedProject && selectedSubsystemIds.length === 0 && !activeTaggedPart;
   
   return (
-    <div className={`${className} ${lightMode ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'} border-l flex flex-col`} style={style}>
+    <div className={`${className} ${lightMode ? 'bg-white/95 border-gray-200 backdrop-blur-sm' : 'bg-gray-900/95 border-gray-800 backdrop-blur-sm'} border-l flex flex-col`} style={style}>
       {/* Header */}
-      <div className={`p-3 border-b ${lightMode ? 'border-gray-200' : 'border-gray-700'} flex items-center justify-between`}>
+      <div className={`p-3 border-b ${lightMode ? 'border-gray-200' : 'border-gray-800'} flex items-center justify-between`}>
         <h2 className={`text-sm font-semibold ${lightMode ? 'text-gray-900' : 'text-white'}`}>Inspector</h2>
         <button
           onClick={() => togglePanel('right')}

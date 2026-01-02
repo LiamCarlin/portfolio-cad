@@ -191,7 +191,6 @@ export interface Configuration {
   description: string;
 }
 
-export type ViewMode = 'assembly' | 'timeline' | 'results' | 'media';
 export type ToolMode = 'select' | 'measure' | 'explode' | 'tutorial';
 export type ThemeMode = 'dark' | 'light';
 
@@ -204,7 +203,7 @@ interface TutorialStep {
   id: string;
   instruction: string;
   condition: {
-    type: 'select' | 'explode' | 'tab' | 'configuration';
+    type: 'select' | 'explode' | 'configuration';
     value: string;
   };
   cameraPosition?: [number, number, number];
@@ -273,7 +272,6 @@ interface PortfolioState {
   showProjectOverview: boolean; // Show project overview/content in inspector
   
   // View state
-  viewMode: ViewMode;
   toolMode: ToolMode;
   explodeAmount: number;
   showLabels: boolean;
@@ -328,7 +326,6 @@ interface PortfolioState {
   setHoveredTaggedPart: (partId: string | null) => void;
   setShowProjectOverview: (show: boolean) => void;
   
-  setViewMode: (mode: ViewMode) => void;
   setToolMode: (mode: ToolMode) => void;
   setExplodeAmount: (amount: number) => void;
   toggleLabels: () => void;
@@ -404,7 +401,6 @@ export const usePortfolioStore = create<PortfolioState>()(
       hoveredTaggedPartId: null,
       showProjectOverview: false, // Default to CAD view (3D Model tab)
       
-      viewMode: 'assembly',
       toolMode: 'select',
       explodeAmount: 0,
       showLabels: true,
@@ -512,8 +508,6 @@ export const usePortfolioStore = create<PortfolioState>()(
       setHoveredTaggedPart: (partId) => set({ hoveredTaggedPartId: partId }),
       
       setShowProjectOverview: (show) => set({ showProjectOverview: show, selectedSubsystemIds: show ? [] : get().selectedSubsystemIds }),
-      
-      setViewMode: (mode) => set({ viewMode: mode }),
       
       setToolMode: (mode) => set({ toolMode: mode }),
       
@@ -884,11 +878,5 @@ if (typeof window !== 'undefined') {
       store.toggleCommandPalette();
     }
     
-    // Number keys 1-5 for view modes
-    const viewModes: ViewMode[] = ['assembly', 'timeline', 'results', 'media'];
-    if (e.key >= '1' && e.key <= '4') {
-      e.preventDefault();
-      store.setViewMode(viewModes[parseInt(e.key) - 1]);
-    }
   });
 }

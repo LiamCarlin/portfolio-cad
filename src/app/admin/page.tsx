@@ -17,7 +17,6 @@ import {
   Folder,
   FileJson,
   AlertCircle,
-  Lock,
   Image,
   Type,
   Save,
@@ -96,9 +95,6 @@ const ExperienceEditorDynamic = dynamic(
 
 function ExperienceEditorTab() { return <ExperienceEditorDynamic />; }
 
-// Admin password - in production, use environment variables and proper auth
-const ADMIN_PASSWORD = 'admin123'; // Change this!
-
 // Content block types
 const CONTENT_BLOCK_TYPES = [
   { type: 'text', label: 'Text', icon: Type },
@@ -169,70 +165,7 @@ const createEmptyMilestone = (): Milestone => ({
   completed: false,
 });
 
-// Password Gate Component
-function PasswordGate({ onAuthenticate }: { onAuthenticate: () => void }) {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      // Store auth in session
-      sessionStorage.setItem('admin-auth', 'true');
-      onAuthenticate();
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Lock size={32} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Admin Access</h1>
-          <p className="text-gray-400 mt-2">Enter password to continue</p>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className={`w-full bg-gray-800 border rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-white ${
-                error ? 'border-red-500' : 'border-gray-700'
-              }`}
-              autoFocus
-            />
-            {error && (
-              <p className="text-red-400 text-sm mt-2">Incorrect password</p>
-            )}
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-medium transition-colors"
-          >
-            Access Admin Panel
-          </button>
-        </form>
-        
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-gray-400 hover:text-white text-sm transition-colors">
-            ← Back to Portfolio
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'content' | 'cad' | 'images' | 'subsystems' | 'milestones' | 'export'>('details');
@@ -247,17 +180,8 @@ export default function AdminPage() {
   const experienceEntries = usePortfolioStore((state) => state.experienceEntries);
   const setExperienceEntries = usePortfolioStore((state) => state.setExperienceEntries);
 
-  // Check for existing auth on mount
-  useEffect(() => {
-    const auth = sessionStorage.getItem('admin-auth');
-    if (auth === 'true') {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
   // Load projects and welcome data: prefer saved siteData.json, then localStorage, then samples
   useEffect(() => {
-    if (!isAuthenticated) return;
     let cancelled = false;
 
     (async () => {
@@ -310,11 +234,10 @@ export default function AdminPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [isAuthenticated, updateWelcomePageData]);
+  }, [updateWelcomePageData]);
 
   // Auto-save to localStorage
   useEffect(() => {
-    if (!isAuthenticated) return;
     if (projects.length > 0) {
       setSaveStatus('saving');
       const timer = setTimeout(() => {
@@ -340,17 +263,12 @@ export default function AdminPage() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [projects, isAuthenticated]);
+  }, [projects]);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3000);
   };
-
-  // Show password gate if not authenticated
-  if (!isAuthenticated) {
-    return <PasswordGate onAuthenticate={() => setIsAuthenticated(true)} />;
-  }
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 

@@ -55,9 +55,9 @@ export default function Toolbar({ className }: ToolbarProps) {
   };
   
   return (
-    <div className={`${className} bg-gray-900 border-b border-gray-700 flex items-center gap-1 px-2 h-10`}>
+    <div className={`${className} bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 flex items-center gap-1 px-3 h-11`}>
       {/* Tool buttons */}
-      <div className="flex items-center gap-1 pr-3 border-r border-gray-700">
+      <div className="flex items-center gap-1 pr-3 border-r border-gray-800">
         {tools.map((tool) => {
           const Icon = tool.icon;
           const isActive = toolMode === tool.id || (tool.id === 'tutorial' && tutorialActive);
@@ -67,20 +67,20 @@ export default function Toolbar({ className }: ToolbarProps) {
               key={tool.id}
               onClick={() => handleToolClick(tool.id)}
               className={`
-                p-2 rounded transition-colors flex items-center gap-1 group relative
+                p-2 rounded-full transition-all flex items-center gap-1 group relative
                 ${isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10'
                 }
               `}
               title={`${tool.label} (${tool.shortcut})`}
             >
               <Icon size={16} />
               {/* Tooltip */}
-              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 hidden group-hover:block z-50">
-                <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-gray-700">
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 hidden group-hover:block z-50">
+                <div className="bg-gray-800/95 backdrop-blur-sm text-white text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap border border-white/10">
                   {tool.label}
-                  <span className="text-gray-500 ml-1">({tool.shortcut})</span>
+                  <span className="text-gray-400 ml-1">({tool.shortcut})</span>
                 </div>
               </div>
             </button>
@@ -89,9 +89,9 @@ export default function Toolbar({ className }: ToolbarProps) {
       </div>
       
       {/* Explode slider */}
-      <div className="flex items-center gap-2 px-3 border-r border-gray-700">
+      <div className="flex items-center gap-2 px-3 border-r border-gray-800">
         <SlidersHorizontal size={14} className="text-gray-500" />
-        <span className="text-xs text-gray-500 w-14">Explode</span>
+        <span className="text-xs text-gray-400 w-14">Explode</span>
         <input
           type="range"
           min="0"
@@ -99,7 +99,7 @@ export default function Toolbar({ className }: ToolbarProps) {
           step="0.01"
           value={explodeAmount}
           onChange={(e) => setExplodeAmount(parseFloat(e.target.value))}
-          className="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-thumb"
+          className="w-24 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-500"
         />
         <span className="text-xs text-gray-400 w-10 text-right">
           {Math.round(explodeAmount * 100)}%
@@ -110,10 +110,10 @@ export default function Toolbar({ className }: ToolbarProps) {
       <button
         onClick={toggleLabels}
         className={`
-          p-2 rounded transition-colors flex items-center gap-1
+          p-2 rounded-full transition-all flex items-center gap-1
           ${showLabels
-            ? 'bg-gray-700 text-white'
-            : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            ? 'bg-white/10 text-white border border-white/10'
+            : 'text-gray-400 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10'
           }
         `}
         title="Toggle Labels (L)"
@@ -125,28 +125,28 @@ export default function Toolbar({ className }: ToolbarProps) {
       <div className="flex-1" />
       
       {/* Camera controls */}
-      <div className="flex items-center gap-1 pl-3 border-l border-gray-700">
+      <div className="flex items-center gap-1 pl-3 border-l border-gray-800">
         <button
           onClick={resetCamera}
-          className="p-2 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10 transition-all"
           title="Reset Camera (Home)"
         >
           <Home size={16} />
         </button>
         <button
-          className="p-2 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10 transition-all"
           title="Zoom In"
         >
           <ZoomIn size={16} />
         </button>
         <button
-          className="p-2 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10 transition-all"
           title="Zoom Out"
         >
           <ZoomOut size={16} />
         </button>
         <button
-          className="p-2 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10 transition-all"
           title="Reset Rotation"
         >
           <RotateCcw size={16} />

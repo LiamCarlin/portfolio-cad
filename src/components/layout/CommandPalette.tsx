@@ -10,7 +10,7 @@ import {
   Keyboard,
   X,
 } from 'lucide-react';
-import { usePortfolioStore, ViewMode } from '@/store/usePortfolioStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 interface CommandItem {
   id: string;
@@ -26,7 +26,6 @@ export default function CommandPalette() {
     toggleCommandPalette,
     projects,
     selectProject,
-    setViewMode,
     setToolMode,
     toggleLabels,
     startTutorial,
@@ -49,27 +48,6 @@ export default function CommandPalette() {
         category: 'Projects',
         action: () => {
           selectProject(project.id);
-          toggleCommandPalette();
-        },
-      });
-    });
-    
-    // View mode commands
-    const viewModes: { mode: ViewMode; label: string; shortcut: string }[] = [
-      { mode: 'assembly', label: 'Assembly View', shortcut: '1' },
-      { mode: 'timeline', label: 'Timeline View', shortcut: '2' },
-      { mode: 'results', label: 'Results View', shortcut: '3' },
-      { mode: 'media', label: 'Media View', shortcut: '4' },
-    ];
-    
-    viewModes.forEach(({ mode, label, shortcut }) => {
-      items.push({
-        id: `view-${mode}`,
-        label: `View: ${label}`,
-        category: 'Views',
-        shortcut,
-        action: () => {
-          setViewMode(mode);
           toggleCommandPalette();
         },
       });
@@ -144,7 +122,7 @@ export default function CommandPalette() {
     });
     
     return items;
-  }, [projects, selectProject, setViewMode, setToolMode, startTutorial, focusOnSelection, toggleLabels, toggleCommandPalette]);
+  }, [projects, selectProject, setToolMode, startTutorial, focusOnSelection, toggleLabels, toggleCommandPalette]);
   
   // Filter commands by query
   const filteredCommands = useMemo(() => {
@@ -213,10 +191,10 @@ export default function CommandPalette() {
       />
       
       {/* Palette */}
-      <div className="relative w-full max-w-xl bg-gray-900 rounded-xl shadow-2xl border border-gray-700 overflow-hidden">
+      <div className="relative w-full max-w-xl bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 border border-white/10 overflow-hidden">
         {/* Search input */}
-        <div className="flex items-center gap-3 p-4 border-b border-gray-700">
-          <Command size={20} className="text-gray-500" />
+        <div className="flex items-center gap-3 p-4 border-b border-white/10">
+          <Command size={20} className="text-gray-400" />
           <input
             ref={inputRef}
             type="text"
@@ -230,9 +208,9 @@ export default function CommandPalette() {
           />
           <button
             onClick={toggleCommandPalette}
-            className="p-1 text-gray-500 hover:text-white transition-colors"
+            className="p-1.5 rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-all"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
         
@@ -240,7 +218,7 @@ export default function CommandPalette() {
         <div className="max-h-96 overflow-y-auto">
           {Object.entries(groupedCommands).map(([category, items]) => (
             <div key={category}>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-800/50">
+              <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white/5">
                 {category}
               </div>
               {items.map((cmd, index) => {
@@ -253,8 +231,8 @@ export default function CommandPalette() {
                     onClick={cmd.action}
                     onMouseEnter={() => setSelectedIndex(globalIndex)}
                     className={`
-                      w-full px-4 py-3 flex items-center gap-3 text-left transition-colors
-                      ${isSelected ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'}
+                      w-full px-4 py-3 flex items-center gap-3 text-left transition-all
+                      ${isSelected ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-white/5'}
                     `}
                   >
                     {cmd.category === 'Projects' && <Box size={16} className="text-gray-500" />}
@@ -287,21 +265,21 @@ export default function CommandPalette() {
         </div>
         
         {/* Footer hint */}
-        <div className="px-4 py-2 border-t border-gray-700 flex items-center justify-between text-xs text-gray-500">
+        <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between text-xs text-gray-500">
           <div className="flex items-center gap-4">
             <span>
-              <kbd className="px-1 py-0.5 bg-gray-800 rounded">↑</kbd>
-              <kbd className="px-1 py-0.5 bg-gray-800 rounded ml-1">↓</kbd>
-              <span className="ml-1">to navigate</span>
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded-md border border-white/10">↑</kbd>
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded-md border border-white/10 ml-1">↓</kbd>
+              <span className="ml-1.5">to navigate</span>
             </span>
             <span>
-              <kbd className="px-1 py-0.5 bg-gray-800 rounded">Enter</kbd>
-              <span className="ml-1">to select</span>
+              <kbd className="px-1.5 py-0.5 bg-white/10 rounded-md border border-white/10">Enter</kbd>
+              <span className="ml-1.5">to select</span>
             </span>
           </div>
           <span>
-            <kbd className="px-1 py-0.5 bg-gray-800 rounded">Esc</kbd>
-            <span className="ml-1">to close</span>
+            <kbd className="px-1.5 py-0.5 bg-white/10 rounded-md border border-white/10">Esc</kbd>
+            <span className="ml-1.5">to close</span>
           </span>
         </div>
       </div>

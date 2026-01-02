@@ -435,7 +435,6 @@ export default function Viewport({ className }: ViewportProps) {
     projects, 
     selectedProjectId, 
     explodeAmount, 
-    viewMode,
     showLabels,
     selectedTaggedPartId,
     hoveredTaggedPartId,
@@ -520,18 +519,10 @@ export default function Viewport({ className }: ViewportProps) {
   const hasCADModel = !!cadModelUrl || loadingModel;
   const hasSubsystems = selectedProject?.subsystems && selectedProject.subsystems.length > 0;
   
-  // Import content view components
-  const { 
-    ProjectContentView, 
-    TimelineView, 
-    ResultsView, 
-    MediaView
-  } = require('./ContentViews');
-  
   const lightMode = usePortfolioStore.getState().theme === 'light';
 
   // Show Project Content when showProjectOverview is true and no subsystem is selected
-  if (viewMode === 'assembly' && selectedProject && showProjectOverview && selectedSubsystemIds.length === 0) {
+  if (selectedProject && showProjectOverview && selectedSubsystemIds.length === 0) {
     return (
       <div className={`${className} ${lightMode ? 'bg-gray-100' : 'bg-gray-900'}`}>
         <ProjectContentViewer project={selectedProject} lightMode={lightMode} />
@@ -540,41 +531,6 @@ export default function Viewport({ className }: ViewportProps) {
   }
   
   // Experience view removed from main viewport; shown on welcome page instead
-  
-  // Render different views based on viewMode
-  if (viewMode !== 'assembly' && selectedProject) {
-    switch (viewMode) {
-      case 'timeline':
-        return (
-          <div className={className}>
-            <TimelineView project={selectedProject} lightMode={lightMode} />
-          </div>
-        );
-      case 'results':
-        return (
-          <div className={className}>
-            <ResultsView project={selectedProject} lightMode={lightMode} />
-          </div>
-        );
-      case 'media':
-        return (
-          <div className={className}>
-            <MediaView project={selectedProject} lightMode={lightMode} />
-          </div>
-        );
-    }
-  }
-  
-  // No project selected for non-assembly views
-  if (viewMode !== 'assembly') {
-    return (
-      <div className={`${className} flex items-center justify-center ${lightMode ? 'bg-gray-100' : 'bg-gray-900'}`}>
-        <div className={`text-center ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          <p className="text-lg mb-2">Select a project to view content</p>
-        </div>
-      </div>
-    );
-  }
   
   return (
     <div className={`${className} bg-gradient-to-b from-gray-900 to-gray-950`}>

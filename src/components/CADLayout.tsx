@@ -63,8 +63,8 @@ function ResizeHandle({
     <div
       className={`
         ${direction === 'horizontal' ? 'w-1 cursor-col-resize hover:w-1.5' : 'h-1 cursor-row-resize hover:h-1.5'}
-        ${theme === 'light' ? 'bg-gray-300 hover:bg-blue-500' : 'bg-gray-700 hover:bg-blue-500'}
-        ${isDragging ? (theme === 'light' ? 'bg-blue-500' : 'bg-blue-500') : ''}
+        ${theme === 'light' ? 'bg-gray-200 hover:bg-blue-500' : 'bg-gray-800 hover:bg-blue-500'}
+        ${isDragging ? 'bg-blue-500' : ''}
         transition-all flex-shrink-0 relative
       `}
       onMouseDown={handleMouseDown}
@@ -113,6 +113,7 @@ export default function CADLayout() {
     document.documentElement.classList.add(initialTheme);
     document.documentElement.classList.remove(initialTheme === 'dark' ? 'light' : 'dark');
   }, [setTheme]);
+
 
   // Resize handlers - use refs to avoid stale closure issues
   const leftPanelWidthRef = useRef(leftPanelWidth);
@@ -222,10 +223,10 @@ export default function CADLayout() {
       </div>
       
       {/* Status bar */}
-      <div className={`h-6 border-t flex items-center justify-between px-4 text-xs ${
+      <div className={`h-7 border-t flex items-center justify-between px-4 text-xs ${
         theme === 'light' 
-          ? 'bg-white border-gray-200 text-gray-400' 
-          : 'bg-gray-900 border-gray-700 text-gray-500'
+          ? 'bg-white/95 border-gray-200 text-gray-400 backdrop-blur-sm' 
+          : 'bg-gray-900/95 border-gray-800 text-gray-500 backdrop-blur-sm'
       }`}>
         <div className="flex items-center gap-4">
           <span>Liam Carlin's Portfolio</span>
@@ -240,9 +241,9 @@ export default function CADLayout() {
             <HelpCircle size={12} />
             How to use
           </button>
-          <span>•</span>
-          <span>Press <kbd className={`px-1 py-0.5 rounded ${
-            theme === 'light' ? 'bg-gray-100 text-gray-500' : 'bg-gray-800 text-gray-400'
+          <span className="text-gray-600">•</span>
+          <span>Press <kbd className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono ${
+            theme === 'light' ? 'bg-gray-100 text-gray-500 border border-gray-200' : 'bg-gray-800 text-gray-400 border border-gray-700'
           }`}>Ctrl+P</kbd> for command palette</span>
         </div>
       </div>

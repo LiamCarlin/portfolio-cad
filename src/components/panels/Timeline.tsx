@@ -38,7 +38,7 @@ export default function Timeline({ className, style }: TimelineProps) {
   return (
     <div 
       ref={containerRef}
-      className={`${className} ${lightMode ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'} border-t flex flex-col overflow-hidden`}
+      className={`${className} ${lightMode ? 'bg-white/95 border-gray-200 backdrop-blur-sm' : 'bg-gray-900/95 border-gray-800 backdrop-blur-sm'} border-t flex flex-col overflow-hidden`}
       style={{ 
         height: `${bottomPanelCollapsed ? collapsedHeight : expandedHeight}px`,
         minHeight: `${bottomPanelCollapsed ? collapsedHeight : expandedHeight}px`,

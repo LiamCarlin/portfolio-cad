@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   Github,
   Linkedin,
@@ -13,14 +14,15 @@ import {
   Code,
   FlaskConical,
   Package,
-  Calendar,
+  FileText,
+  MapPin,
 } from 'lucide-react';
 import { usePortfolioStore, Project } from '@/store/usePortfolioStore';
 import { getImageDataUrl } from '@/lib/imageStorage';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import { PROJECT_ICON_MAP } from '@/lib/projectIcons';
 
-const categoryIcons = {
+const categoryIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   robotics: Cpu,
   vehicles: Car,
   software: Code,
@@ -28,23 +30,75 @@ const categoryIcons = {
   other: Package,
 };
 
-const categoryAccent = {
-  robotics: 'text-green-400',
-  vehicles: 'text-blue-400',
-  software: 'text-purple-400',
-  research: 'text-yellow-400',
-  other: 'text-gray-400',
+const categoryGradients: Record<string, string> = {
+  robotics: 'from-green-500 to-emerald-600',
+  vehicles: 'from-blue-500 to-cyan-600',
+  software: 'from-purple-500 to-violet-600',
+  research: 'from-yellow-500 to-orange-600',
+  other: 'from-gray-500 to-slate-600',
 };
 
-// Profile configuration is now in the store - edit via admin panel
-// See WelcomePageEditor component for editing
-
-function ProjectCard({ project, onClick, lightMode }: { project: Project; onClick: () => void; lightMode: boolean }) {
-  const CategoryIcon = categoryIcons[project.category];
-  const accentClass = categoryAccent[project.category];
-  const ProjectIcon = project.iconKey ? PROJECT_ICON_MAP[project.iconKey] : null;
+// Scroll Dot Indicator Component
+function ScrollDotIndicator({ activeSection }: { activeSection: string }) {
+  const sections = [
+    { id: 'hero', label: 'Home' },
+    { id: 'about', label: 'About' },
+    { id: 'projects', label: 'Projects' },
+  ];
   
-  // Get thumbnail - use project thumbnail, first image, or placeholder
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+  
+  const activeIndex = sections.findIndex(s => s.id === activeSection);
+  
+  return (
+    <div className="fixed left-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex flex-col items-center">
+      {/* Glass background pill */}
+      <div className="absolute inset-y-[-12px] -inset-x-2.5 bg-gray-900/60 backdrop-blur-md rounded-full border border-white/10" />
+      
+      <div className="relative flex flex-col items-center gap-6 py-3">
+        {sections.map((section, index) => {
+          const isActive = activeSection === section.id;
+          const isPast = index < activeIndex;
+          
+          return (
+            <button
+              key={section.id}
+              onClick={() => scrollToSection(section.id)}
+              className="group relative flex items-center"
+              aria-label={`Go to ${section.label}`}
+            >
+              {/* Label tooltip - appears on hover */}
+              <div className="absolute left-8 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none bg-gray-900/95 backdrop-blur-sm text-white border border-white/10 shadow-xl">
+                {section.label}
+              </div>
+              
+              {/* Dot */}
+              <div className={`
+                w-2.5 h-2.5 rounded-full transition-all duration-500 ease-out
+                ${isActive 
+                  ? 'bg-white scale-125 shadow-lg shadow-white/40' 
+                  : isPast 
+                    ? 'bg-white/60 scale-100' 
+                    : 'bg-gray-600 scale-100 group-hover:bg-gray-400'
+                }
+              `} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Project card - grid style matching SimplePortfolio
+function ProjectCard({ project, onClick }: { project: Project; onClick: () => void }) {
+  const CategoryIcon = categoryIcons[project.category] || Package;
+  
   const baseResolvedThumb = resolvePublicUrl(project.thumbnail);
   const thumbnail = project.thumbnailFile || baseResolvedThumb || 
     (project.images && project.images.length > 0 ? project.images[0].data : null);
@@ -52,82 +106,62 @@ function ProjectCard({ project, onClick, lightMode }: { project: Project; onClic
   return (
     <button
       onClick={onClick}
-      className={`
-        group relative w-full text-left rounded-xl overflow-hidden h-full flex flex-col
-        ${lightMode 
-          ? 'bg-white border border-gray-300 hover:shadow-lg hover:border-gray-400' 
-          : 'bg-gray-900 border border-gray-700 hover:shadow-xl hover:border-gray-600'
-        }
-        hover:scale-[1.02]
-        transition-all duration-300 ease-out
-      `}
+      className="group relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-800 text-left"
     >
-      {/* Thumbnail */}
-      <div className={`relative aspect-video min-h-[180px] w-full overflow-hidden ${lightMode ? 'bg-gray-200' : 'bg-gray-800'}`}>
-        {thumbnail ? (
-          <img 
-            src={thumbnail} 
-            alt={project.name}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className={`absolute inset-0 flex items-center justify-center ${lightMode ? 'bg-gradient-to-br from-gray-200 to-gray-300' : 'bg-gradient-to-br from-gray-800 to-gray-900'}`}>
-            <CategoryIcon size={48} className={`${accentClass} opacity-50`} />
-          </div>
-        )}
-        
-        {/* Category badge */}
-        <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-sm ${lightMode ? 'bg-white/90 text-gray-900' : `bg-gray-900/80 ${accentClass}`}`}>
-          {ProjectIcon ? <ProjectIcon size={12} /> : <CategoryIcon size={12} />}
-          <span className="text-xs font-medium capitalize">{project.category}</span>
-        </div>
-        
-        {/* Year badge */}
-        <div className={`absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full backdrop-blur-sm ${lightMode ? 'bg-white/90 text-gray-900' : 'bg-gray-900/80 text-gray-300'}`}>
-          <Calendar size={10} />
-          <span className="text-xs">{project.year}</span>
-        </div>
-      </div>
+      {/* Background image */}
+      {thumbnail ? (
+        <img 
+          src={thumbnail} 
+          alt={project.name} 
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+        />
+      ) : (
+        <div className={`absolute inset-0 bg-gradient-to-br ${categoryGradients[project.category]} opacity-50`} />
+      )}
+      
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 group-hover:from-black/95 group-hover:via-black/60 transition-all duration-300" />
       
       {/* Content */}
-      <div className="p-4 flex-1 flex flex-col">
-        <h3 className={`text-lg font-semibold mb-2 transition-colors ${lightMode ? 'text-gray-900 group-hover:text-blue-600' : 'text-white group-hover:text-blue-400'}`}>
-          {project.name}
-        </h3>
-        <p
-          className={`text-sm mb-3 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}
-          style={{
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical' as const,
-            overflow: 'hidden',
-          }}
-        >
-          {project.description}
-        </p>
+      <div className="absolute inset-0 p-5 flex flex-col justify-end">
+        {/* Title and subtitle always visible */}
+        <div className="transform transition-transform duration-300 group-hover:-translate-y-2">
+          <h3 className="text-lg font-bold text-white mb-1 line-clamp-2">
+            {project.name}
+          </h3>
+          <p className="text-sm text-gray-300 line-clamp-2 opacity-90">
+            {project.description}
+          </p>
+        </div>
         
-        {/* Tools */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        {/* Tools - appear on hover */}
+        <div className="mt-3 flex flex-wrap gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
           {project.tools.slice(0, 4).map((tool, i) => (
-            <span 
-              key={i}
-              className={`px-2 py-0.5 text-xs rounded ${lightMode ? 'bg-gray-200 text-gray-700' : 'bg-gray-800/80 text-gray-400'}`}
-            >
+            <span key={i} className="px-2 py-0.5 text-xs rounded-full bg-white/20 text-white backdrop-blur-sm">
               {tool}
             </span>
           ))}
           {project.tools.length > 4 && (
-            <span className={`px-2 py-0.5 text-xs rounded ${lightMode ? 'bg-gray-200 text-gray-600' : 'bg-gray-800/80 text-gray-500'}`}>
+            <span className="px-2 py-0.5 text-xs rounded-full bg-white/20 text-white backdrop-blur-sm">
               +{project.tools.length - 4}
             </span>
           )}
         </div>
-        
-        {/* View project link */}
-        <div className={`mt-auto flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all ${lightMode ? 'text-blue-600' : 'text-blue-400'}`}>
-          <span>View Project</span>
-          <ChevronRight size={14} />
-        </div>
+      </div>
+      
+      {/* Category + Year badge */}
+      <div className="absolute top-4 left-4 flex items-center gap-2">
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${categoryGradients[project.category]} text-white shadow-lg`}>
+          {project.category}
+        </span>
+        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-black/50 text-white backdrop-blur-sm">
+          {project.year}
+        </span>
+      </div>
+      
+      {/* Hover arrow */}
+      <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+        <ChevronRight size={18} className="text-white" />
       </div>
     </button>
   );
@@ -138,20 +172,40 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onSelectProject }: HomePageProps) {
-  const { projects, theme, welcomePageData } = usePortfolioStore();
+  const { projects, welcomePageData } = usePortfolioStore();
   const [bannerImageData, setBannerImageData] = useState<string | null>(null);
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [showExperience, setShowExperience] = useState(false);
+  const [activeSection, setActiveSection] = useState('hero');
   
   // Wait for hydration to complete before rendering theme-dependent styles
   useEffect(() => {
     setIsHydrated(true);
   }, []);
   
-  // Always use dark mode until hydration completes to prevent flash
-  const lightMode = isHydrated ? theme === 'light' : false;
-  const heroIconFilter = (!lightMode || bannerImageData) ? 'invert(1) brightness(1.8)' : 'none';
+  // Scroll tracking for section indicator
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ['hero', 'about', 'projects'];
+      const scrollPosition = window.scrollY + window.innerHeight / 3;
+      
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const { offsetTop, offsetHeight } = element;
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            setActiveSection(sectionId);
+            break;
+          }
+        }
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   
   // Load banner image: prefer exported URL, fall back to IndexedDB
   useEffect(() => {
@@ -180,41 +234,46 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
     load();
   }, [welcomePageData.bannerImageId, welcomePageData.bannerImageUrl]);
   
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <>
-    <div className={`min-h-screen ${lightMode ? 'bg-gray-100' : 'bg-gray-950'}`}>
+    <div className="min-h-screen bg-gray-950 scroll-smooth">
+      {/* Scroll Dot Indicator */}
+      <ScrollDotIndicator activeSection={activeSection} />
+      
       {/* Hero Section */}
-      <div className={`relative overflow-hidden ${lightMode ? 'bg-white' : 'bg-gray-900'}`}>
-        {/* Banner Image */}
+      <section id="hero" className="relative overflow-hidden">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black" />
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-0 -left-40 w-80 h-80 bg-blue-500 rounded-full filter blur-[100px] animate-pulse" />
+          <div className="absolute bottom-0 -right-40 w-80 h-80 bg-purple-500 rounded-full filter blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+        
+        {/* Banner image overlay if exists */}
         {bannerImageData && !isLoadingBanner && (
           <div className="absolute inset-0">
-            <img 
-              src={bannerImageData} 
-              alt="Banner"
-              className="w-full h-full object-cover"
-            />
-            {/* Darkness overlay */}
-            <div 
-              className="absolute inset-0 bg-black transition-opacity"
-              style={{ opacity: (welcomePageData.bannerDarkness ?? 30) / 100 }}
-            />
+            <img src={bannerImageData} alt="Banner" className="w-full h-full object-cover opacity-30" />
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-950/50 via-gray-950/80 to-gray-950" />
           </div>
         )}
         
-        {/* Background pattern (if no banner) */}
-        {!bannerImageData && !isLoadingBanner && (
-          <div className="absolute inset-0 opacity-5">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }} />
-          </div>
-        )}
-        
-        <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24">
-          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+        <div className="relative max-w-5xl mx-auto px-6 py-16 md:py-20">
+          {/* Profile section */}
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
             {/* Avatar */}
             <div className="relative">
-              <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full ${lightMode ? 'bg-gray-200' : 'bg-gray-800'} flex items-center justify-center overflow-hidden flex-shrink-0`}>
+              <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-4 ring-white/10">
                 {welcomePageData.profileImageUrl ? (
                   <img 
                     src={resolvePublicUrl(welcomePageData.profileImageUrl) || welcomePageData.profileImageUrl}
@@ -222,106 +281,83 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className={`text-5xl md:text-6xl font-bold ${lightMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-4xl font-bold text-white">
                     {welcomePageData.name.split(' ').map(n => n[0]).join('')}
-                  </span>
+                  </div>
                 )}
               </div>
-              {/* Status indicator */}
-              <div className={`absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 ${lightMode ? 'border-gray-100' : 'border-gray-900'}`} title="Available for opportunities" />
+              {/* Status dot */}
+              <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 border-gray-950" title="Available" />
             </div>
             
             {/* Info */}
-            <div className="text-center md:text-left flex-1">
-              <h1 className="text-3xl md:text-4xl font-bold mb-2 text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+            <div className="flex-1 text-center md:text-left">
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
                 {welcomePageData.name}
               </h1>
-              <p className="text-blue-200 font-medium mb-1" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{welcomePageData.title}</p>
-              <p className="text-gray-100 text-sm mb-4" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>{welcomePageData.school}</p>
-              <p className="text-gray-50 text-base max-w-xl mb-6" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
-                {welcomePageData.bio}
-              </p>
-
-              {/* Experience CTA */}
-              <div className="mt-2 mb-6">
-                <button
-                  onClick={() => setShowExperience(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium shadow-md transition-colors"
-                >
-                  <span>View Experience</span>
-                  <ChevronRight size={14} />
-                </button>
+              <p className="text-xl text-blue-400 font-medium mb-2">{welcomePageData.title}</p>
+              
+              {/* Location & School */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-400 mb-4">
+                {welcomePageData.school && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin size={14} />
+                    {welcomePageData.school}
+                  </span>
+                )}
               </div>
               
-              {/* Links */}
-              <div className="flex flex-wrap justify-center md:justify-start gap-4">
+              <p className="text-gray-300 max-w-xl mb-6 leading-relaxed">
+                {welcomePageData.bio}
+              </p>
+              
+              {/* Action buttons */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-6">
+                <button
+                  onClick={() => setShowExperience(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium transition-colors"
+                >
+                  <span>View Experience</span>
+                  <ChevronRight size={16} />
+                </button>
+                <Link
+                  href="/simple"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white text-sm font-medium transition-all"
+                >
+                  <FileText size={16} />
+                  <span>Simple View</span>
+                </Link>
+              </div>
+              
+              {/* Social links */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                 {welcomePageData.socialLinks.map((link) => {
-                  if (link.platform === 'email') {
-                    return (
-                      <a
-                        key={link.id}
-                        href={`mailto:${link.url}`}
-                        className="flex flex-col items-center gap-2 group"
-                        title={link.label || link.platform}
-                      >
-                        {link.icon ? (
-                          <img 
-                            src={link.icon} 
-                            alt={link.label || link.platform}
-                            className="w-12 h-12 rounded-lg object-cover hover:shadow-lg transition-all"
-                            style={{ filter: heroIconFilter }}
-                          />
-                        ) : (
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-semibold transition-colors ${
-                            lightMode 
-                              ? 'bg-gray-200 text-gray-700' 
-                              : 'bg-gray-700 text-gray-200'
-                          }`}>
-                            ✉️
-                          </div>
-                        )}
-                        <span className="sr-only">
-                          {link.label || 'Email'}
-                        </span>
-                      </a>
-                    );
-                  }
-                  
+                  const href = link.platform === 'email' ? `mailto:${link.url}` : link.url;
                   return (
                     <a
                       key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-2 group"
+                      href={href}
+                      target={link.platform === 'email' ? undefined : '_blank'}
+                      rel={link.platform === 'email' ? undefined : 'noopener noreferrer'}
+                      className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
                       title={link.label || link.platform}
                     >
                       {link.icon ? (
                         <img 
-                          src={link.icon} 
+                          src={link.icon}
                           alt={link.label || link.platform}
-                          className="w-12 h-12 rounded-lg object-cover hover:shadow-lg transition-all"
-                          style={{ filter: heroIconFilter }}
+                          className="w-5 h-5 object-contain"
+                          style={{ filter: 'invert(1) brightness(0.8)' }}
                         />
                       ) : (
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-semibold transition-colors ${
-                          lightMode 
-                            ? 'bg-gray-200 text-gray-700 group-hover:bg-gray-300' 
-                            : 'bg-gray-700 text-gray-200 group-hover:bg-gray-600'
-                        }`}>
+                        <>
+                          {link.platform === 'email' && <Mail size={18} />}
                           {link.platform === 'linkedin' && <Linkedin size={18} />}
                           {link.platform === 'github' && <Github size={18} />}
-                          {link.platform === 'twitter' && '𝕏'}
-                          {link.platform === 'discord' && '💬'}
-                          {link.platform === 'instagram' && '📷'}
-                          {link.platform === 'youtube' && '▶️'}
-                          {link.platform === 'website' && <ExternalLink size={18} />}
                           {link.platform === 'phone' && <Phone size={18} />}
-                        </div>
+                          {!['email', 'linkedin', 'github', 'phone'].includes(link.platform) && <ExternalLink size={18} />}
+                        </>
                       )}
-                      <span className="sr-only">
-                        {link.label || link.platform}
-                      </span>
                     </a>
                   );
                 })}
@@ -329,131 +365,107 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
             </div>
           </div>
         </div>
-      </div>
+      </section>
       
       {/* About This Portfolio Section */}
-      <div className={`border-y ${lightMode ? 'border-gray-200 bg-gray-50' : 'border-gray-800 bg-gray-900/50'}`}>
-        <div className="max-w-6xl mx-auto px-6 py-12">
+      <section id="about" className="border-y border-gray-800 bg-gray-900/50 scroll-mt-8">
+        <div className="max-w-5xl mx-auto px-6 py-12">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-lg ${lightMode ? 'bg-blue-100' : 'bg-blue-500/10'}`}>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/20">
                 <Package size={24} className="text-blue-400" />
               </div>
               <div className="flex-1">
-                <h3 className={`text-xl font-bold mb-3 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+                <h3 className="text-xl font-bold mb-3 text-white">
                   {welcomePageData.aboutTitle}
                 </h3>
-                <p className={`text-base leading-relaxed ${lightMode ? 'text-gray-600' : 'text-gray-300'}`}>
+                <p className="text-base leading-relaxed text-gray-300">
                   {welcomePageData.aboutContent}
                 </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
       
       {/* Projects Section */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <section id="projects" className="max-w-5xl mx-auto px-6 py-12 scroll-mt-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className={`text-2xl font-bold mb-1 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+            <h2 className="text-2xl font-bold mb-1 text-white">
               Featured Projects
             </h2>
-            <p className={`${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <p className="text-gray-400">
               Click on any project to explore the interactive 3D view
             </p>
           </div>
-          <div className={`text-sm ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <div className="text-sm text-gray-400">
             {projects.length} projects
           </div>
         </div>
         
         {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {projects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
               onClick={() => onSelectProject(project.id)}
-              lightMode={lightMode}
             />
           ))}
         </div>
         
         {projects.length === 0 && (
-          <div className={`text-center py-16 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div className="text-center py-16 text-gray-400">
             <Package size={48} className="mx-auto mb-4 opacity-50" />
             <p>No projects yet. Add some in the admin panel!</p>
           </div>
         )}
-      </div>
+      </section>
       
       {/* Footer */}
-      <div className={`border-t ${lightMode ? 'border-gray-200 bg-white' : 'border-gray-800 bg-gray-900'}`}>
-        <div className="max-w-6xl mx-auto px-6 py-8">
+      <footer className="border-t border-gray-800 bg-gray-900/50">
+        <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className={`text-sm ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <p className="text-sm text-gray-500">
               © {new Date().getFullYear()} {welcomePageData.name}. Built with passion and precision.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {welcomePageData.socialLinks.map((link) => {
-                // Build link href
-                let href = link.url;
-                if (link.platform === 'email') {
-                  href = `mailto:${link.url}`;
-                }
-
-                // If no icon, only show standard platforms
-                if (!link.icon) {
-                  if (link.platform === 'email') {
-                    return (
-                      <a key={link.id} href={href}
-                        className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
-                        title={link.label || 'Email'}>
-                        <Mail size={18} />
-                      </a>
-                    );
-                  }
-                  if (link.platform === 'github') {
-                    return (
-                      <a key={link.id} href={href} target="_blank" rel="noopener noreferrer"
-                        className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
-                        title={link.label || 'GitHub'}>
-                        <Github size={18} />
-                      </a>
-                    );
-                  }
-                  if (link.platform === 'linkedin') {
-                    return (
-                      <a key={link.id} href={href} target="_blank" rel="noopener noreferrer"
-                        className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
-                        title={link.label || 'LinkedIn'}>
-                        <Linkedin size={18} />
-                      </a>
-                    );
-                  }
-                  return null;
-                }
-
-                // Display links with icons
+                const href = link.platform === 'email' ? `mailto:${link.url}` : link.url;
                 return (
-                  <a key={link.id} href={href} target={link.platform === 'email' ? undefined : '_blank'} rel={link.platform === 'email' ? undefined : 'noopener noreferrer'}
-                    className={`${lightMode ? 'text-gray-400 hover:text-gray-600' : 'text-gray-500 hover:text-gray-300'} transition-colors`}
-                    title={link.label || link.platform}>
-                    <img 
-                      src={link.icon} 
-                      alt={link.label || link.platform}
-                      className="w-6 h-6 rounded object-cover"
-                      style={{ filter: lightMode ? 'none' : 'invert(1) brightness(1.8)' }}
-                    />
+                  <a
+                    key={link.id}
+                    href={href}
+                    target={link.platform === 'email' ? undefined : '_blank'}
+                    rel={link.platform === 'email' ? undefined : 'noopener noreferrer'}
+                    className="text-gray-500 hover:text-gray-300 transition-colors"
+                    title={link.label || link.platform}
+                  >
+                    {link.icon ? (
+                      <img 
+                        src={link.icon}
+                        alt={link.label || link.platform}
+                        className="w-5 h-5 object-contain"
+                        style={{ filter: 'invert(1) brightness(0.6)' }}
+                      />
+                    ) : (
+                      <>
+                        {link.platform === 'email' && <Mail size={18} />}
+                        {link.platform === 'linkedin' && <Linkedin size={18} />}
+                        {link.platform === 'github' && <Github size={18} />}
+                        {link.platform === 'phone' && <Phone size={18} />}
+                      </>
+                    )}
                   </a>
                 );
               })}
             </div>
           </div>
         </div>
-      </div>
+      </footer>
     </div>
+    
     {/* Experience Modal */}
     {showExperience && (
       (() => {
@@ -461,6 +473,6 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
         return <ExperienceModal onClose={() => setShowExperience(false)} />;
       })()
     )}
-  </>
+    </>
   );
 }

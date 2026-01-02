@@ -8,28 +8,21 @@ import {
   Quote,
   List,
   Link2,
-  Video,
   Calendar,
-  CheckCircle,
-  Circle,
-  Camera,
   Play,
-  Download,
   Github,
   Box,
   Award,
   Target,
-  Wrench,
   User,
   Clock,
   Lightbulb,
-  Edit2,
   Briefcase,
   MapPin,
 } from 'lucide-react';
-import { usePortfolioStore, Project, ContentBlock, Milestone, ExperienceEntry } from '@/store/usePortfolioStore';
+import { usePortfolioStore, Project, ContentBlock } from '@/store/usePortfolioStore';
 import { EditButton } from '@/components/admin/UserMenu';
-import { ProjectDetailsEditor, ContentBlockEditor, MilestoneEditor } from '@/components/admin/InlineEditors';
+import { ProjectDetailsEditor, ContentBlockEditor } from '@/components/admin/InlineEditors';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 
 // Content Block Renderer
@@ -177,6 +170,23 @@ export function ProjectContentView({ project, lightMode }: { project: Project; l
   const cardBg = lightMode ? 'bg-white' : 'bg-gray-800';
   const textClass = lightMode ? 'text-gray-900' : 'text-white';
   const mutedClass = lightMode ? 'text-gray-600' : 'text-gray-300';
+  const uploadedImages = project.images || [];
+  const contentImages = project.contentBlocks?.filter(b => b.type === 'image').map(b => ({
+    id: b.id,
+    src: b.file || b.content,
+    caption: b.caption,
+  })) || [];
+  const galleryImages = project.contentBlocks?.filter(b => b.type === 'gallery').flatMap(b => [
+    ...(b.images || []).map((img, i) => ({ id: `${b.id}-url-${i}`, src: img, caption: undefined })),
+    ...(b.imageFiles || []).map((img, i) => ({ id: `${b.id}-file-${i}`, src: img, caption: undefined })),
+  ]) || [];
+  const videoUrl = project.links.video;
+  const allImages = [
+    ...uploadedImages.map(i => ({ id: i.id, src: i.data, caption: i.caption })),
+    ...contentImages,
+    ...galleryImages,
+  ].filter(i => i.src);
+  const hasMedia = !!videoUrl || allImages.length > 0;
 
   return (
     <div className={`h-full overflow-y-auto ${bgClass} p-6`}>
@@ -343,8 +353,66 @@ export function ProjectContentView({ project, lightMode }: { project: Project; l
           </div>
         )}
 
+        {/* Media Section */}
+        {hasMedia && (
+          <div className="mt-10">
+            <div className="flex items-center gap-2 mb-4">
+              <ImageIcon className="text-blue-500" size={22} />
+              <h3 className={`font-semibold ${textClass}`}>Project Media</h3>
+            </div>
+            {videoUrl && (
+              <div className="mb-6">
+                <h4 className={`text-sm font-semibold ${mutedClass} mb-3 uppercase tracking-wide`}>Video</h4>
+                {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
+                  <div className="aspect-video max-w-3xl">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]}`}
+                      className="w-full h-full rounded-xl shadow-lg"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <a
+                    href={videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors"
+                  >
+                    <Play size={18} />
+                    Watch Video
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </div>
+            )}
+            {allImages.length > 0 ? (
+              <div>
+                <h4 className={`text-sm font-semibold ${mutedClass} mb-3 uppercase tracking-wide`}>
+                  Images ({allImages.length})
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {allImages.map((img) => (
+                    <div key={img.id} className={`${cardBg} rounded-lg overflow-hidden shadow-md group`}>
+                      <img
+                        src={img.src}
+                        alt={img.caption || 'Project image'}
+                        className="w-full h-40 object-cover group-hover:scale-105 transition-transform"
+                      />
+                      {img.caption && (
+                        <p className={`p-2 text-sm ${mutedClass}`}>{img.caption}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className={`${mutedClass} text-sm`}>No images uploaded yet.</div>
+            )}
+          </div>
+        )}
+
         {/* No content message */}
-        {contentBlocks.length === 0 && !project.challenge && !project.solution && !project.impact && (
+        {contentBlocks.length === 0 && !project.challenge && !project.solution && !project.impact && !hasMedia && (
           <div className={`text-center py-16 ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
             <FileText size={48} className="mx-auto mb-4 opacity-30" />
             <p>No content blocks added yet.</p>
@@ -356,285 +424,6 @@ export function ProjectContentView({ project, lightMode }: { project: Project; l
       {/* Editor Modals */}
       <ProjectDetailsEditor project={project} isOpen={showDetailsEditor} onClose={() => setShowDetailsEditor(false)} />
       <ContentBlockEditor project={project} isOpen={showContentEditor} onClose={() => setShowContentEditor(false)} />
-    </div>
-  );
-}
-
-// Timeline View - Project milestones and history
-export function TimelineView({ project, lightMode }: { project: Project; lightMode: boolean }) {
-  const [showMilestoneEditor, setShowMilestoneEditor] = useState(false);
-  
-  const bgClass = lightMode ? 'bg-gray-50' : 'bg-gray-900';
-  const cardBg = lightMode ? 'bg-white' : 'bg-gray-800';
-  const textClass = lightMode ? 'text-gray-900' : 'text-white';
-  const mutedClass = lightMode ? 'text-gray-500' : 'text-gray-400';
-
-  const sortedMilestones = [...(project.milestones || [])].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-
-  return (
-    <div className={`h-full overflow-y-auto ${bgClass} p-6`}>
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Calendar className="text-blue-500" size={28} />
-            <h2 className={`text-2xl font-bold ${textClass}`}>Project Timeline</h2>
-          </div>
-          <EditButton onClick={() => setShowMilestoneEditor(true)} />
-        </div>
-
-        {sortedMilestones.length > 0 ? (
-          <div className="relative">
-            {/* Timeline line */}
-            <div className={`absolute left-6 top-0 bottom-0 w-0.5 ${lightMode ? 'bg-gray-300' : 'bg-gray-700'}`} />
-            
-            <div className="space-y-6">
-              {sortedMilestones.map((milestone, index) => (
-                <div key={milestone.id} className="relative pl-16">
-                  {/* Timeline dot */}
-                  <div className={`absolute left-4 w-5 h-5 rounded-full border-4 ${
-                    milestone.completed 
-                      ? 'bg-green-500 border-green-300' 
-                      : lightMode ? 'bg-white border-gray-300' : 'bg-gray-800 border-gray-600'
-                  }`}>
-                    {milestone.completed && (
-                      <CheckCircle size={12} className="text-white absolute -top-0.5 -left-0.5" />
-                    )}
-                  </div>
-                  
-                  <div className={`${cardBg} rounded-xl p-5 shadow-md`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className={`font-semibold ${textClass}`}>{milestone.name}</h3>
-                      <span className={`text-sm ${mutedClass}`}>
-                        {new Date(milestone.date).toLocaleDateString('en-US', {
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                    <p className={mutedClass}>{milestone.description}</p>
-                    {milestone.completed && (
-                      <span className="inline-flex items-center gap-1 text-sm text-green-500 mt-2">
-                        <CheckCircle size={14} />
-                        Completed
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className={`text-center py-16 ${mutedClass}`}>
-            <Calendar size={48} className="mx-auto mb-4 opacity-30" />
-            <p>No milestones added yet.</p>
-            <p className="text-sm">Add milestones in edit mode.</p>
-          </div>
-        )}
-      </div>
-      
-      {/* Editor Modal */}
-      <MilestoneEditor project={project} isOpen={showMilestoneEditor} onClose={() => setShowMilestoneEditor(false)} />
-    </div>
-  );
-}
-
-// Results View - Outcomes and achievements
-export function ResultsView({ project, lightMode }: { project: Project; lightMode: boolean }) {
-  const bgClass = lightMode ? 'bg-gray-50' : 'bg-gray-900';
-  const cardBg = lightMode ? 'bg-white' : 'bg-gray-800';
-  const textClass = lightMode ? 'text-gray-900' : 'text-white';
-  const mutedClass = lightMode ? 'text-gray-500' : 'text-gray-400';
-
-  // Collect all outcomes from subsystems and tagged parts
-  const subsystemOutcomes = project.subsystems?.flatMap(s => 
-    s.outcomes.map(o => ({ source: s.name, outcome: o }))
-  ) || [];
-
-  const taggedPartOutcomes = project.cadModel?.taggedParts?.flatMap(p =>
-    p.outcomes.map(o => ({ source: p.name, outcome: o }))
-  ) || [];
-
-  const allOutcomes = [...subsystemOutcomes, ...taggedPartOutcomes];
-
-  return (
-    <div className={`h-full overflow-y-auto ${bgClass} p-6`}>
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <Award className="text-blue-500" size={28} />
-          <h2 className={`text-2xl font-bold ${textClass}`}>Results & Outcomes</h2>
-        </div>
-
-        {/* Impact Summary */}
-        {project.impact && (
-          <div className={`${cardBg} rounded-xl p-6 mb-8 shadow-md border-l-4 border-blue-500`}>
-            <h3 className={`font-semibold ${textClass} mb-3`}>Project Impact</h3>
-            <p className={`text-lg ${mutedClass}`}>{project.impact}</p>
-          </div>
-        )}
-
-        {/* Skills Developed */}
-        {project.skills && project.skills.length > 0 && (
-          <div className={`${cardBg} rounded-xl p-6 mb-8 shadow-md`}>
-            <h3 className={`font-semibold ${textClass} mb-4`}>Skills Developed</h3>
-            <div className="flex flex-wrap gap-2">
-              {project.skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="px-4 py-2 bg-purple-600/20 text-purple-400 rounded-lg"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Component Outcomes */}
-        {allOutcomes.length > 0 && (
-          <div className={`${cardBg} rounded-xl p-6 shadow-md`}>
-            <h3 className={`font-semibold ${textClass} mb-4`}>Key Achievements</h3>
-            <div className="space-y-3">
-              {allOutcomes.map((item, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <CheckCircle className="text-green-500 mt-0.5 flex-shrink-0" size={18} />
-                  <div>
-                    <p className={mutedClass}>{item.outcome}</p>
-                    <span className={`text-xs ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      from {item.source}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Lessons Learned */}
-        {project.lessonsLearned && (
-          <div className={`${cardBg} rounded-xl p-6 mt-6 shadow-md`}>
-            <h3 className={`font-semibold ${textClass} mb-3`}>Lessons Learned</h3>
-            <p className={mutedClass}>{project.lessonsLearned}</p>
-          </div>
-        )}
-
-        {/* Future Work */}
-        {project.futureWork && (
-          <div className={`${cardBg} rounded-xl p-6 mt-6 shadow-md`}>
-            <h3 className={`font-semibold ${textClass} mb-3`}>Future Work</h3>
-            <p className={mutedClass}>{project.futureWork}</p>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!project.impact && allOutcomes.length === 0 && !project.lessonsLearned && (
-          <div className={`text-center py-16 ${mutedClass}`}>
-            <Award size={48} className="mx-auto mb-4 opacity-30" />
-            <p>No results documented yet.</p>
-            <p className="text-sm">Add outcomes in the admin panel.</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Media View - All images and videos
-export function MediaView({ project, lightMode }: { project: Project; lightMode: boolean }) {
-  const bgClass = lightMode ? 'bg-gray-50' : 'bg-gray-900';
-  const cardBg = lightMode ? 'bg-white' : 'bg-gray-800';
-  const textClass = lightMode ? 'text-gray-900' : 'text-white';
-  const mutedClass = lightMode ? 'text-gray-500' : 'text-gray-400';
-
-  // Collect all images
-  const uploadedImages = project.images || [];
-  
-  // Images from content blocks
-  const contentImages = project.contentBlocks?.filter(b => b.type === 'image').map(b => ({
-    id: b.id,
-    src: b.file || b.content,
-    caption: b.caption
-  })) || [];
-
-  // Gallery images from content blocks
-  const galleryImages = project.contentBlocks?.filter(b => b.type === 'gallery').flatMap(b => [
-    ...(b.images || []).map((img, i) => ({ id: `${b.id}-url-${i}`, src: img, caption: undefined })),
-    ...(b.imageFiles || []).map((img, i) => ({ id: `${b.id}-file-${i}`, src: img, caption: undefined }))
-  ]) || [];
-
-  // Video links
-  const videoUrl = project.links.video;
-
-  const allImages = [
-    ...uploadedImages.map(i => ({ id: i.id, src: i.data, caption: i.caption })),
-    ...contentImages,
-    ...galleryImages
-  ].filter(i => i.src);
-
-  return (
-    <div className={`h-full overflow-y-auto ${bgClass} p-6`}>
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <Camera className="text-blue-500" size={28} />
-          <h2 className={`text-2xl font-bold ${textClass}`}>Media Gallery</h2>
-        </div>
-
-        {/* Video Section */}
-        {videoUrl && (
-          <div className="mb-8">
-            <h3 className={`font-semibold ${textClass} mb-4`}>Video</h3>
-            {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
-              <div className="aspect-video max-w-3xl">
-                <iframe
-                  src={`https://www.youtube.com/embed/${videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]}`}
-                  className="w-full h-full rounded-xl shadow-lg"
-                  allowFullScreen
-                />
-              </div>
-            ) : (
-              <a
-                href={videoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors"
-              >
-                <Play size={20} />
-                Watch Video
-                <ExternalLink size={16} />
-              </a>
-            )}
-          </div>
-        )}
-
-        {/* Images Gallery */}
-        {allImages.length > 0 ? (
-          <div>
-            <h3 className={`font-semibold ${textClass} mb-4`}>Images ({allImages.length})</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {allImages.map((img) => (
-                <div key={img.id} className={`${cardBg} rounded-lg overflow-hidden shadow-md group`}>
-                  <img
-                    src={img.src}
-                    alt={img.caption || 'Project image'}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
-                  />
-                  {img.caption && (
-                    <p className={`p-2 text-sm ${mutedClass}`}>{img.caption}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className={`text-center py-16 ${mutedClass}`}>
-            <ImageIcon size={48} className="mx-auto mb-4 opacity-30" />
-            <p>No images uploaded yet.</p>
-            <p className="text-sm">Add images in the admin panel.</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
