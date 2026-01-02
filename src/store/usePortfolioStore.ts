@@ -302,6 +302,8 @@ interface PortfolioState {
   leftPanelCollapsed: boolean;
   rightPanelCollapsed: boolean;
   bottomPanelCollapsed: boolean;
+  // Hydration flag for persisted store
+  hasHydrated: boolean;
   // Min/max for resizing
   leftPanelMinWidth: number;
   leftPanelMaxWidth: number;
@@ -347,6 +349,9 @@ interface PortfolioState {
   expandRightPanel: () => void;
   
   toggleCommandPalette: () => void;
+
+  // Hydration
+  setHasHydrated: (hydrated: boolean) => void;
   
   toggleTheme: () => void;
   setTheme: (theme: ThemeMode) => void;
@@ -405,7 +410,18 @@ export const usePortfolioStore = create<PortfolioState>()(
       explodeAmount: 0,
       showLabels: true,
       
-      theme: 'light',
+      // Initialize theme from localStorage if available (prevents hydration mismatch)
+      theme: (typeof window !== 'undefined' && localStorage?.getItem?.('portfoliocad-store')
+        ? (() => {
+            try {
+              const stored = JSON.parse(localStorage.getItem('portfoliocad-store') || '{}');
+              const state = stored.state || {};
+              return state.theme || 'light';
+            } catch {
+              return 'light';
+            }
+          })()
+        : 'light'),
       
       // Admin/Edit mode
       isAuthenticated: false,
@@ -437,6 +453,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       rightPanelMaxWidth: 1400,
       bottomPanelMinHeight: 100,
       bottomPanelMaxHeight: 800,
+      hasHydrated: false,
       
       commandPaletteOpen: false,
       
@@ -508,7 +525,6 @@ export const usePortfolioStore = create<PortfolioState>()(
       setHoveredTaggedPart: (partId) => set({ hoveredTaggedPartId: partId }),
       
       setShowProjectOverview: (show) => set({ showProjectOverview: show, selectedSubsystemIds: show ? [] : get().selectedSubsystemIds }),
-      
       setToolMode: (mode) => set({ toolMode: mode }),
       
       setExplodeAmount: (amount) => set({ explodeAmount: Math.max(0, Math.min(1, amount)) }),
@@ -726,6 +742,8 @@ export const usePortfolioStore = create<PortfolioState>()(
       },
       
       toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
+
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
       
       toggleTheme: () => {
         const { theme } = get();
@@ -824,6 +842,11 @@ export const usePortfolioStore = create<PortfolioState>()(
           };
         }
         return persisted;
+      },
+      onRehydrateStorage: () => (state, error) => {
+        if (!error) {
+          usePortfolioStore.getState().setHasHydrated(true);
+        }
       },
     }
   )

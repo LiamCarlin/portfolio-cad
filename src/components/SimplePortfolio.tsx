@@ -26,6 +26,8 @@ import {
   Briefcase,
   FileText,
   LucideIcon,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePortfolioStore, Project, Subsystem, ContentBlock } from '@/store/usePortfolioStore';
@@ -51,7 +53,7 @@ const categoryGradients: Record<string, string> = {
 };
 
 // Render content blocks
-function ContentBlockRenderer({ block }: { block: ContentBlock }) {
+function ContentBlockRenderer({ block, lightMode }: { block: ContentBlock; lightMode: boolean }) {
   switch (block.type) {
     case 'heading':
       const HeadingTag = `h${block.level || 2}` as 'h1' | 'h2' | 'h3';
@@ -61,13 +63,13 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
         3: 'text-lg font-medium mb-2',
       };
       return (
-        <HeadingTag className={`${headingClasses[block.level || 2]} text-white`}>
+        <HeadingTag className={`${headingClasses[block.level || 2]} ${lightMode ? 'text-gray-900' : 'text-white'}`}>
           {block.content}
         </HeadingTag>
       );
     case 'text':
       return (
-        <p className="mb-4 leading-relaxed text-gray-300">
+        <p className={`mb-4 leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
           {block.content}
         </p>
       );
@@ -133,14 +135,20 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
 }
 
 // Subsystem card component
-function SubsystemCard({ subsystem }: { subsystem: Subsystem }) {
+function SubsystemCard({ subsystem, lightMode }: { subsystem: Subsystem; lightMode: boolean }) {
   const [expanded, setExpanded] = useState(false);
   
   return (
-    <div className="rounded-xl bg-gray-800/50 border border-gray-700 overflow-hidden">
+    <div className={`rounded-xl border overflow-hidden ${
+      lightMode
+        ? 'bg-gray-100 border-gray-300'
+        : 'bg-gray-800/50 border-gray-700'
+    }`}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-800 transition-colors"
+        className={`w-full p-4 flex items-center justify-between text-left transition-colors ${
+          lightMode ? 'hover:bg-gray-200' : 'hover:bg-gray-800'
+        }`}
       >
         <div className="flex items-center gap-3">
           <div 
@@ -148,31 +156,35 @@ function SubsystemCard({ subsystem }: { subsystem: Subsystem }) {
             style={{ backgroundColor: subsystem.color || '#3b82f6' }}
           />
           <div>
-            <h4 className="font-medium text-white">{subsystem.name}</h4>
-            <p className="text-sm text-gray-400">{subsystem.role}</p>
+            <h4 className={`font-medium ${lightMode ? 'text-gray-900' : 'text-white'}`}>{subsystem.name}</h4>
+            <p className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>{subsystem.role}</p>
           </div>
         </div>
         <ChevronDown 
           size={18} 
-          className={`transition-transform text-gray-500 ${expanded ? 'rotate-180' : ''}`}
+          className={`transition-transform ${expanded ? 'rotate-180' : ''} ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}
         />
       </button>
       
       {expanded && (
-        <div className="px-4 pb-4 border-t border-gray-700">
+        <div className={`px-4 pb-4 border-t ${lightMode ? 'border-gray-300' : 'border-gray-700'}`}>
           <div className="pt-4 space-y-4">
-            <p className="text-sm text-gray-300">
+            <p className={`text-sm ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
               {subsystem.description}
             </p>
             
             {subsystem.tools && subsystem.tools.length > 0 && (
               <div>
-                <h5 className="text-xs font-semibold uppercase tracking-wide mb-2 text-gray-400">
+                <h5 className={`text-xs font-semibold uppercase tracking-wide mb-2 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                   Tools Used
                 </h5>
                 <div className="flex flex-wrap gap-1">
                   {subsystem.tools.map((tool, i) => (
-                    <span key={i} className="px-2 py-0.5 text-xs rounded bg-gray-700 text-gray-300">
+                    <span key={i} className={`px-2 py-0.5 text-xs rounded ${
+                      lightMode
+                        ? 'bg-gray-200 text-gray-700'
+                        : 'bg-gray-700 text-gray-300'
+                    }`}>
                       {tool}
                     </span>
                   ))}
@@ -182,12 +194,12 @@ function SubsystemCard({ subsystem }: { subsystem: Subsystem }) {
             
             {subsystem.outcomes && subsystem.outcomes.length > 0 && (
               <div>
-                <h5 className="text-xs font-semibold uppercase tracking-wide mb-2 text-gray-400">
+                <h5 className={`text-xs font-semibold uppercase tracking-wide mb-2 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                   Key Outcomes
                 </h5>
                 <ul className="space-y-1">
                   {subsystem.outcomes.map((outcome, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                    <li key={i} className={`flex items-start gap-2 text-sm ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
                       <CheckCircle size={14} className="text-green-500 flex-shrink-0 mt-0.5" />
                       {outcome}
                     </li>
@@ -199,7 +211,7 @@ function SubsystemCard({ subsystem }: { subsystem: Subsystem }) {
             {subsystem.children && subsystem.children.length > 0 && (
               <div className="space-y-2 pt-2">
                 {subsystem.children.map((child) => (
-                  <SubsystemCard key={child.id} subsystem={child} />
+                  <SubsystemCard key={child.id} subsystem={child} lightMode={lightMode} />
                 ))}
               </div>
             )}
@@ -212,6 +224,8 @@ function SubsystemCard({ subsystem }: { subsystem: Subsystem }) {
 
 // Project detail component
 function ProjectDetail({ project, onBack }: { project: Project; onBack: () => void }) {
+  const { theme } = usePortfolioStore();
+  const lightMode = theme === 'light';
   const CategoryIcon = categoryIcons[project.category] || Package;
   
   const baseResolvedThumb = resolvePublicUrl(project.thumbnail);
@@ -219,25 +233,33 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
     (project.images && project.images.length > 0 ? project.images[0].data : null);
   
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className={`min-h-screen ${lightMode ? 'bg-gray-50' : 'bg-gray-950'}`}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-gray-900/95 border-b border-gray-800 backdrop-blur-sm">
+      <div className={`sticky top-0 z-10 border-b backdrop-blur-sm ${
+        lightMode
+          ? 'bg-white/95 border-gray-200'
+          : 'bg-gray-900/95 border-gray-800'
+      }`}>
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
           <button
             onClick={onBack}
-            className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
+            className={`p-2 rounded-lg transition-colors ${
+              lightMode
+                ? 'hover:bg-gray-100 text-gray-600'
+                : 'hover:bg-gray-800 text-gray-400'
+            }`}
           >
             <ArrowLeft size={20} />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold truncate text-white">{project.name}</h1>
+            <h1 className={`font-bold truncate ${lightMode ? 'text-gray-900' : 'text-white'}`}>{project.name}</h1>
             <div className="flex items-center gap-2 text-sm">
-              <span className="flex items-center gap-1 text-gray-400">
+              <span className={`flex items-center gap-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                 <CategoryIcon size={12} />
                 <span className="capitalize">{project.category}</span>
               </span>
-              <span className="text-gray-600">•</span>
-              <span className="text-gray-400">{project.year}</span>
+              <span className={lightMode ? 'text-gray-400' : 'text-gray-600'}>•</span>
+              <span className={lightMode ? 'text-gray-600' : 'text-gray-400'}>{project.year}</span>
             </div>
           </div>
         </div>
@@ -247,28 +269,40 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
       {thumbnail && (
         <div className="relative h-64 md:h-80 overflow-hidden">
           <img src={thumbnail} alt={project.name} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/50 to-transparent" />
+          <div className={`absolute inset-0 bg-gradient-to-t to-transparent ${
+            lightMode
+              ? 'from-gray-50 via-gray-50/50'
+              : 'from-gray-950 via-gray-950/50'
+          }`} />
         </div>
       )}
       
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Role and tools */}
-        <div className="mb-8 p-5 rounded-2xl bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700">
+        <div className={`mb-8 p-5 rounded-2xl border ${
+          lightMode
+            ? 'bg-gradient-to-br from-gray-100 to-gray-200 border-gray-300'
+            : 'bg-gradient-to-br from-gray-800/80 to-gray-900/80 border-gray-700'
+        }`}>
           <div className="flex flex-wrap gap-6">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide mb-1 text-gray-400">
+              <h3 className={`text-xs font-semibold uppercase tracking-wide mb-1 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                 Role
               </h3>
-              <p className="text-white">{project.role || 'Not specified'}</p>
+              <p className={lightMode ? 'text-gray-900' : 'text-white'}>{project.role || 'Not specified'}</p>
             </div>
             <div className="flex-1 min-w-[200px]">
-              <h3 className="text-xs font-semibold uppercase tracking-wide mb-2 text-gray-400">
+              <h3 className={`text-xs font-semibold uppercase tracking-wide mb-2 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                 Tools & Technologies
               </h3>
               <div className="flex flex-wrap gap-2">
                 {project.tools.map((tool, i) => (
-                  <span key={i} className="px-3 py-1 text-sm rounded-full bg-gray-700/50 text-gray-200 border border-gray-600">
+                  <span key={i} className={`px-3 py-1 text-sm rounded-full border ${
+                    lightMode
+                      ? 'bg-white border-gray-300 text-gray-700'
+                      : 'bg-gray-700/50 text-gray-200 border-gray-600'
+                  }`}>
                     {tool}
                   </span>
                 ))}
@@ -279,11 +313,11 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
         
         {/* Overview */}
         <section className="mb-8">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
-            <Target size={20} className="text-blue-400" />
+          <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+            <Target size={20} className={lightMode ? 'text-blue-600' : 'text-blue-400'} />
             Overview
           </h2>
-          <p className="leading-relaxed text-gray-300">
+          <p className={`leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
             {project.description}
           </p>
         </section>
@@ -291,11 +325,11 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
         {/* Challenge */}
         {project.challenge && (
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
-              <Lightbulb size={20} className="text-yellow-400" />
+            <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+              <Lightbulb size={20} className="text-yellow-500" />
               Challenge
             </h2>
-            <p className="leading-relaxed text-gray-300">
+            <p className={`leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
               {project.challenge}
             </p>
           </section>
@@ -304,11 +338,11 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
         {/* Solution */}
         {project.solution && (
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
-              <Wrench size={20} className="text-green-400" />
+            <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+              <Wrench size={20} className={lightMode ? 'text-green-600' : 'text-green-400'} />
               Solution
             </h2>
-            <p className="leading-relaxed text-gray-300">
+            <p className={`leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
               {project.solution}
             </p>
           </section>
@@ -317,11 +351,11 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
         {/* Impact */}
         {project.impact && (
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
-              <CheckCircle size={20} className="text-purple-400" />
+            <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+              <CheckCircle size={20} className={lightMode ? 'text-purple-600' : 'text-purple-400'} />
               Impact
             </h2>
-            <p className="leading-relaxed text-gray-300">
+            <p className={`leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
               {project.impact}
             </p>
           </section>
@@ -330,13 +364,13 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
         {/* Subsystems */}
         {project.subsystems && project.subsystems.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
-              <Box size={20} className="text-blue-400" />
+            <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+              <Box size={20} className={lightMode ? 'text-blue-600' : 'text-blue-400'} />
               System Components
             </h2>
             <div className="space-y-2">
               {project.subsystems.map((subsystem) => (
-                <SubsystemCard key={subsystem.id} subsystem={subsystem} />
+                <SubsystemCard key={subsystem.id} subsystem={subsystem} lightMode={lightMode} />
               ))}
             </div>
           </section>
@@ -345,12 +379,12 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
         {/* Content blocks */}
         {project.contentBlocks && project.contentBlocks.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4 text-white">
+            <h2 className={`text-xl font-bold mb-4 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
               Project Details
             </h2>
             <div>
               {project.contentBlocks.map((block) => (
-                <ContentBlockRenderer key={block.id} block={block} />
+                <ContentBlockRenderer key={block.id} block={block} lightMode={lightMode} />
               ))}
             </div>
           </section>
@@ -359,8 +393,8 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
         {/* Links */}
         {project.links && Object.keys(project.links).length > 0 && (
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-white">
-              <LinkIcon size={20} className="text-blue-400" />
+            <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
+              <LinkIcon size={20} className={lightMode ? 'text-blue-600' : 'text-blue-400'} />
               Project Links
             </h2>
             <div className="flex flex-wrap gap-3">
@@ -373,7 +407,11 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors border border-gray-700"
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border ${
+                      lightMode
+                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 border-gray-300'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border-gray-700'
+                    }`}
                   >
                     <Icon size={16} />
                     <span className="capitalize">{key}</span>
@@ -484,8 +522,9 @@ function ProjectCard({ project, onClick }: { project: Project; onClick: () => vo
 
 // Experience section
 function ExperienceSection() {
-  const { experienceEntries } = usePortfolioStore();
+  const { experienceEntries, theme } = usePortfolioStore();
   const [expanded, setExpanded] = useState(false);
+  const lightMode = theme === 'light';
   
   if (!experienceEntries || experienceEntries.length === 0) return null;
   
@@ -493,22 +532,26 @@ function ExperienceSection() {
     <section className="mb-12">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between text-left p-5 rounded-2xl transition-all duration-300 bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700 hover:border-gray-600 hover:shadow-lg hover:shadow-blue-500/5"
+        className={`w-full flex items-center justify-between text-left p-5 rounded-2xl transition-all duration-300 ${
+          lightMode
+            ? 'bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 hover:border-gray-400 hover:shadow-lg'
+            : 'bg-gradient-to-br from-gray-800/80 to-gray-900/80 border border-gray-700 hover:border-gray-600 hover:shadow-lg hover:shadow-blue-500/5'
+        }`}
       >
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
             <Briefcase size={20} className="text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className={`text-lg font-bold ${lightMode ? 'text-gray-900' : 'text-white'}`}>
               Experience
             </h2>
-            <p className="text-sm text-gray-400">
+            <p className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
               {experienceEntries.length} {experienceEntries.length === 1 ? 'position' : 'positions'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className={`flex items-center gap-2 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
           <span className="text-sm">{expanded ? 'Hide' : 'Show'}</span>
           <ChevronDown 
             size={20} 
@@ -522,7 +565,11 @@ function ExperienceSection() {
           {experienceEntries.map((exp) => (
             <div 
               key={exp.id}
-              className="p-4 rounded-xl bg-gray-800/50 border border-gray-700 hover:border-gray-600 transition-colors"
+              className={`p-4 rounded-xl transition-colors ${
+                lightMode
+                  ? 'bg-gray-100 border border-gray-300 hover:border-gray-400'
+                  : 'bg-gray-800/50 border border-gray-700 hover:border-gray-600'
+              }`}
             >
               <div className="flex items-start gap-4">
                 {exp.logoUrl ? (
@@ -532,23 +579,27 @@ function ExperienceSection() {
                     className="w-12 h-12 rounded-xl object-contain bg-white p-1.5"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
-                    <Briefcase size={20} className="text-gray-400" />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    lightMode
+                      ? 'bg-gradient-to-br from-gray-200 to-gray-300'
+                      : 'bg-gradient-to-br from-gray-700 to-gray-800'
+                  }`}>
+                    <Briefcase size={20} className={lightMode ? 'text-gray-600' : 'text-gray-400'} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white">
+                  <h3 className={`font-semibold ${lightMode ? 'text-gray-900' : 'text-white'}`}>
                     {exp.role}
                   </h3>
-                  <p className="text-sm text-gray-400">
+                  <p className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                     {exp.organization}
                     {exp.location && ` • ${exp.location}`}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className={`text-xs mt-0.5 ${lightMode ? 'text-gray-500' : 'text-gray-500'}`}>
                     {exp.startDate} - {exp.endDate || 'Present'}
                   </p>
                   {exp.description && (
-                    <p className="text-sm mt-2 text-gray-300">
+                    <p className={`text-sm mt-2 ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
                       {exp.description}
                     </p>
                   )}
@@ -623,11 +674,13 @@ function ScrollDotIndicator({ activeSection }: { activeSection: string }) {
 function FilterTabs({ 
   categories, 
   activeFilter, 
-  onFilterChange 
+  onFilterChange,
+  lightMode
 }: { 
   categories: string[]; 
   activeFilter: string;
   onFilterChange: (filter: string) => void;
+  lightMode: boolean;
 }) {
   return (
     <div className="flex flex-wrap gap-2 mb-8">
@@ -635,8 +688,12 @@ function FilterTabs({
         onClick={() => onFilterChange('all')}
         className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
           activeFilter === 'all'
-            ? 'bg-white text-gray-900'
-            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            ? lightMode
+              ? 'bg-gray-900 text-white'
+              : 'bg-white text-gray-900'
+            : lightMode
+              ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
         }`}
       >
         all
@@ -647,8 +704,12 @@ function FilterTabs({
           onClick={() => onFilterChange(cat)}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
             activeFilter === cat
-              ? 'bg-white text-gray-900'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              ? lightMode
+                ? 'bg-gray-900 text-white'
+                : 'bg-white text-gray-900'
+              : lightMode
+                ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
           }`}
         >
           {cat}
@@ -660,13 +721,15 @@ function FilterTabs({
 
 // Main component
 export default function SimplePortfolio() {
-  const { projects, welcomePageData, setTheme } = usePortfolioStore();
+  const { projects, welcomePageData, theme, toggleTheme, hasHydrated, setHasHydrated } = usePortfolioStore();
   const { isLoading } = useProjectsLoader();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [bannerImageData, setBannerImageData] = useState<string | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [activeSection, setActiveSection] = useState('hero');
+  
+  const lightMode = theme === 'light';
+  const bannerDarkness = (welcomePageData.bannerDarkness ?? 60) / 100;
   
   // Get unique categories
   const categories = useMemo(() => {
@@ -680,11 +743,13 @@ export default function SimplePortfolio() {
     return projects.filter(p => p.category === activeFilter);
   }, [projects, activeFilter]);
   
-  // Hydration
+  // Hydration flag provided by store persist
+  // Fallback: if persist didn't mark hydration (e.g., empty storage), mark after brief delay
   useEffect(() => {
-    setIsHydrated(true);
-    setTheme('dark'); // Force dark theme for simple portfolio
-  }, [setTheme]);
+    if (hasHydrated) return;
+    const timer = setTimeout(() => setHasHydrated(true), 150);
+    return () => clearTimeout(timer);
+  }, [hasHydrated, setHasHydrated]);
   
   // Scroll tracking for section indicator
   useEffect(() => {
@@ -736,13 +801,25 @@ export default function SimplePortfolio() {
     };
   }, []);
   
-  // Loading state
-  if (isLoading || !isHydrated) {
+  // Hydration/data guard - wait for persisted state and project data to load
+  if (!hasHydrated || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+      <div className={`min-h-screen flex items-center justify-center ${lightMode ? 'bg-white' : 'bg-gray-950'}`}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400">Loading...</p>
+          <p className={lightMode ? 'text-gray-600' : 'text-gray-400'}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${lightMode ? 'bg-white' : 'bg-gray-950'}`}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className={lightMode ? 'text-gray-600' : 'text-gray-400'}>Loading...</p>
         </div>
       </div>
     );
@@ -770,14 +847,31 @@ export default function SimplePortfolio() {
   };
   
   return (
-    <div className="min-h-screen bg-gray-950 scroll-smooth">
+    <div className={`min-h-screen scroll-smooth ${lightMode ? 'bg-gray-50' : 'bg-gray-950'}`} suppressHydrationWarning>
+      {/* Theme toggle button */}
+      <button
+        onClick={toggleTheme}
+        className={`fixed top-6 right-6 z-50 p-3 rounded-full transition-all duration-200 shadow-lg ${
+          lightMode
+            ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+            : 'bg-gray-900/80 hover:bg-gray-800 text-gray-300 border border-white/10 backdrop-blur-sm'
+        }`}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+      
       {/* Scroll Dot Indicator */}
       <ScrollDotIndicator activeSection={activeSection} />
       
       {/* Hero Section */}
       <section id="hero" className="relative overflow-hidden">
         {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black" />
+        <div className={`absolute inset-0 ${
+          lightMode
+            ? 'bg-gradient-to-br from-gray-100 via-white to-blue-50'
+            : 'bg-gradient-to-br from-gray-900 via-gray-950 to-black'
+        }`} />
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-0 -left-40 w-80 h-80 bg-blue-500 rounded-full filter blur-[100px] animate-pulse" />
           <div className="absolute bottom-0 -right-40 w-80 h-80 bg-purple-500 rounded-full filter blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
@@ -786,8 +880,14 @@ export default function SimplePortfolio() {
         {/* Banner image overlay if exists */}
         {bannerImageData && (
           <div className="absolute inset-0">
-            <img src={bannerImageData} alt="Banner" className="w-full h-full object-cover opacity-30" />
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-950/50 via-gray-950/80 to-gray-950" />
+            <img src={bannerImageData} alt="Banner" className="w-full h-full object-cover" />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: lightMode ? 'rgba(255,255,255,1)' : 'rgba(3,7,18,1)',
+                opacity: bannerDarkness,
+              }}
+            />
           </div>
         )}
         
@@ -797,7 +897,11 @@ export default function SimplePortfolio() {
             <Link
               href="/"
               onClick={handleGoToFullVersion}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all duration-200"
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${
+                lightMode
+                  ? 'bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+                  : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
+              }`}
             >
               <Box size={16} />
               <span className="text-sm">3D Interactive Version</span>
@@ -821,7 +925,7 @@ export default function SimplePortfolio() {
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-4 ring-white/10">
+              <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-4 ${lightMode ? 'ring-gray-200' : 'ring-white/10'}`}>
                 {welcomePageData.profileImageUrl ? (
                   <img 
                     src={resolvePublicUrl(welcomePageData.profileImageUrl) || welcomePageData.profileImageUrl}
@@ -835,18 +939,18 @@ export default function SimplePortfolio() {
                 )}
               </div>
               {/* Status dot */}
-              <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 border-gray-950" title="Available" />
+              <div className={`absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 ${lightMode ? 'border-white' : 'border-gray-950'}`} title="Available" />
             </div>
             
             {/* Info */}
             <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+              <h1 className={`text-4xl md:text-5xl font-bold mb-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
                 {welcomePageData.name}
               </h1>
-              <p className="text-xl text-blue-400 font-medium mb-2">{welcomePageData.title}</p>
+              <p className="text-xl text-blue-500 font-medium mb-2">{welcomePageData.title}</p>
               
               {/* Location & School */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-400 mb-4">
+              <div className={`flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                 {welcomePageData.school && (
                   <span className="flex items-center gap-1.5">
                     <MapPin size={14} />
@@ -855,7 +959,7 @@ export default function SimplePortfolio() {
                 )}
               </div>
               
-              <p className="text-gray-300 max-w-xl mb-6 leading-relaxed">
+              <p className={`max-w-xl mb-6 leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
                 {welcomePageData.bio}
               </p>
               
@@ -869,7 +973,11 @@ export default function SimplePortfolio() {
                       href={href}
                       target={link.platform === 'email' ? undefined : '_blank'}
                       rel={link.platform === 'email' ? undefined : 'noopener noreferrer'}
-                      className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                        lightMode
+                          ? 'bg-gray-100 border border-gray-200 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                          : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20'
+                      }`}
                       title={link.label || link.platform}
                     >
                       {link.icon ? (
@@ -877,7 +985,7 @@ export default function SimplePortfolio() {
                           src={link.icon}
                           alt={link.label || link.platform}
                           className="w-5 h-5 object-contain"
-                          style={{ filter: 'invert(1) brightness(0.8)' }}
+                          style={{ filter: lightMode ? 'grayscale(1) brightness(0.4)' : 'invert(1) brightness(0.8)' }}
                         />
                       ) : (
                         <>
@@ -906,14 +1014,15 @@ export default function SimplePortfolio() {
         
         {/* Projects section */}
         <section id="projects" className="scroll-mt-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Projects</h2>
-          <p className="text-gray-400 mb-6">A selection of my engineering work</p>
+          <h2 className={`text-2xl font-bold mb-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>Projects</h2>
+          <p className={`mb-6 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>A selection of my engineering work</p>
           
           {/* Filter tabs */}
           <FilterTabs 
             categories={categories} 
             activeFilter={activeFilter} 
-            onFilterChange={setActiveFilter} 
+            onFilterChange={setActiveFilter}
+            lightMode={lightMode}
           />
           
           {/* Projects grid */}
@@ -928,7 +1037,7 @@ export default function SimplePortfolio() {
           </div>
           
           {filteredProjects.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
+            <div className={`text-center py-12 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
               No projects in this category yet.
             </div>
           )}
@@ -936,9 +1045,13 @@ export default function SimplePortfolio() {
       </div>
       
       {/* Footer */}
-      <footer className="border-t border-gray-800 bg-gray-900/50">
+      <footer className={`border-t ${
+        lightMode
+          ? 'border-gray-200 bg-gray-100/50'
+          : 'border-gray-800 bg-gray-900/50'
+      }`}>
         <div className="max-w-5xl mx-auto px-6 py-8 text-center">
-          <p className="text-sm text-gray-500">
+          <p className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-500'}`}>
             © {new Date().getFullYear()} {welcomePageData.name}
           </p>
         </div>

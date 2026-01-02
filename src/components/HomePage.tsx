@@ -17,8 +17,11 @@ import {
   FileText,
   MapPin,
   LucideIcon,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { usePortfolioStore, Project } from '@/store/usePortfolioStore';
+import { useProjectsLoader } from '@/hooks/useProjectsLoader';
 import { getImageDataUrl } from '@/lib/imageStorage';
 import { resolvePublicUrl } from '@/lib/resolvePublicUrl';
 import { PROJECT_ICON_MAP } from '@/lib/projectIcons';
@@ -173,39 +176,49 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onSelectProject }: HomePageProps) {
-  const { projects, welcomePageData } = usePortfolioStore();
+  const { projects, welcomePageData, theme, toggleTheme, hasHydrated, setHasHydrated } = usePortfolioStore();
+  const { isLoading } = useProjectsLoader();
   const [bannerImageData, setBannerImageData] = useState<string | null>(null);
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
   const [showExperience, setShowExperience] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
   
-  // Wait for hydration to complete before rendering theme-dependent styles
+  const lightMode = theme === 'light';
+  const bannerDarkness = (welcomePageData.bannerDarkness ?? 60) / 100;
+
+  // Fallback: if persist didn't mark hydration (e.g., empty storage), mark after brief delay
   useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+    if (hasHydrated) return;
+    const timer = setTimeout(() => setHasHydrated(true), 150);
+    return () => clearTimeout(timer);
+  }, [hasHydrated, setHasHydrated]);
   
   // Scroll tracking for section indicator
   useEffect(() => {
     const handleScroll = () => {
       const sections = ['hero', 'about', 'projects'];
-      const scrollPosition = window.scrollY + window.innerHeight / 3;
+      const scrollPosition = window.scrollY + 200; // Fixed offset from top
       
-      for (const sectionId of sections) {
-        const element = document.getElementById(sectionId);
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const element = document.getElementById(sections[i]);
         if (element) {
-          const { offsetTop, offsetHeight } = element;
-          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
-            setActiveSection(sectionId);
+          const rect = element.getBoundingClientRect();
+          const elementTop = window.scrollY + rect.top;
+          if (scrollPosition >= elementTop) {
+            setActiveSection(sections[i]);
             break;
           }
         }
       }
     };
     
+    // Add slight delay for initial check
+    const timer = setTimeout(handleScroll, 100);
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
   
   // Load banner image: prefer exported URL, fall back to IndexedDB
@@ -235,12 +248,12 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
     load();
   }, [welcomePageData.bannerImageId, welcomePageData.bannerImageUrl]);
   
-  if (!isHydrated) {
+  if (!hasHydrated || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+      <div className={`min-h-screen flex items-center justify-center ${lightMode ? 'bg-white' : 'bg-gray-950'}`}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400">Loading...</p>
+          <p className={lightMode ? 'text-gray-600' : 'text-gray-400'}>Loading...</p>
         </div>
       </div>
     );
@@ -248,14 +261,31 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   
   return (
     <>
-    <div className="min-h-screen bg-gray-950 scroll-smooth">
+    <div className={`min-h-screen scroll-smooth ${lightMode ? 'bg-gray-50' : 'bg-gray-950'}`} suppressHydrationWarning>
+      {/* Theme toggle button */}
+      <button
+        onClick={toggleTheme}
+        className={`fixed top-6 right-6 z-50 p-3 rounded-full transition-all duration-200 shadow-lg ${
+          lightMode
+            ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+            : 'bg-gray-900/80 hover:bg-gray-800 text-gray-300 border border-white/10 backdrop-blur-sm'
+        }`}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+      
       {/* Scroll Dot Indicator */}
       <ScrollDotIndicator activeSection={activeSection} />
       
       {/* Hero Section */}
       <section id="hero" className="relative overflow-hidden">
         {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black" />
+        <div className={`absolute inset-0 ${
+          lightMode
+            ? 'bg-gradient-to-br from-gray-100 via-white to-blue-50'
+            : 'bg-gradient-to-br from-gray-900 via-gray-950 to-black'
+        }`} />
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-0 -left-40 w-80 h-80 bg-blue-500 rounded-full filter blur-[100px] animate-pulse" />
           <div className="absolute bottom-0 -right-40 w-80 h-80 bg-purple-500 rounded-full filter blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
@@ -264,8 +294,14 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
         {/* Banner image overlay if exists */}
         {bannerImageData && !isLoadingBanner && (
           <div className="absolute inset-0">
-            <img src={bannerImageData} alt="Banner" className="w-full h-full object-cover opacity-30" />
-            <div className="absolute inset-0 bg-gradient-to-b from-gray-950/50 via-gray-950/80 to-gray-950" />
+            <img src={bannerImageData} alt="Banner" className="w-full h-full object-cover" />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: lightMode ? 'rgba(255,255,255,1)' : 'rgba(3,7,18,1)',
+                opacity: bannerDarkness,
+              }}
+            />
           </div>
         )}
         
@@ -274,7 +310,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-4 ring-white/10">
+              <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-4 ${lightMode ? 'ring-gray-200' : 'ring-white/10'}`}>
                 {welcomePageData.profileImageUrl ? (
                   <img 
                     src={resolvePublicUrl(welcomePageData.profileImageUrl) || welcomePageData.profileImageUrl}
@@ -288,18 +324,18 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                 )}
               </div>
               {/* Status dot */}
-              <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 border-gray-950" title="Available" />
+              <div className={`absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-4 ${lightMode ? 'border-white' : 'border-gray-950'}`} title="Available" />
             </div>
             
             {/* Info */}
             <div className="flex-1 text-center md:text-left">
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+              <h1 className={`text-4xl md:text-5xl font-bold mb-2 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
                 {welcomePageData.name}
               </h1>
-              <p className="text-xl text-blue-400 font-medium mb-2">{welcomePageData.title}</p>
+              <p className="text-xl text-blue-500 font-medium mb-2">{welcomePageData.title}</p>
               
               {/* Location & School */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-400 mb-4">
+              <div className={`flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4 ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
                 {welcomePageData.school && (
                   <span className="flex items-center gap-1.5">
                     <MapPin size={14} />
@@ -308,7 +344,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                 )}
               </div>
               
-              <p className="text-gray-300 max-w-xl mb-6 leading-relaxed">
+              <p className={`max-w-xl mb-6 leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
                 {welcomePageData.bio}
               </p>
               
@@ -323,7 +359,11 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                 </button>
                 <Link
                   href="/simple"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white text-sm font-medium transition-all"
+                  className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+                    lightMode
+                      ? 'bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+                      : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
+                  }`}
                 >
                   <FileText size={16} />
                   <span>Simple View</span>
@@ -340,7 +380,11 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                       href={href}
                       target={link.platform === 'email' ? undefined : '_blank'}
                       rel={link.platform === 'email' ? undefined : 'noopener noreferrer'}
-                      className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all duration-200"
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                        lightMode
+                          ? 'bg-gray-100 border border-gray-200 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                          : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/20'
+                      }`}
                       title={link.label || link.platform}
                     >
                       {link.icon ? (
@@ -348,7 +392,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                           src={link.icon}
                           alt={link.label || link.platform}
                           className="w-5 h-5 object-contain"
-                          style={{ filter: 'invert(1) brightness(0.8)' }}
+                          style={{ filter: lightMode ? 'grayscale(1) brightness(0.4)' : 'invert(1) brightness(0.8)' }}
                         />
                       ) : (
                         <>
@@ -369,18 +413,26 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
       </section>
       
       {/* About This Portfolio Section */}
-      <section id="about" className="border-y border-gray-800 bg-gray-900/50 scroll-mt-8">
+      <section id="about" className={`border-y scroll-mt-8 ${
+        lightMode
+          ? 'border-gray-200 bg-gray-100/50'
+          : 'border-gray-800 bg-gray-900/50'
+      }`}>
         <div className="max-w-5xl mx-auto px-6 py-12">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/20">
-                <Package size={24} className="text-blue-400" />
+              <div className={`p-3 rounded-xl border ${
+                lightMode
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-blue-500/20'
+              }`}>
+                <Package size={24} className="text-blue-500" />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold mb-3 text-white">
+                <h3 className={`text-xl font-bold mb-3 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
                   {welcomePageData.aboutTitle}
                 </h3>
-                <p className="text-base leading-relaxed text-gray-300">
+                <p className={`text-base leading-relaxed ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>
                   {welcomePageData.aboutContent}
                 </p>
               </div>
@@ -393,14 +445,14 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
       <section id="projects" className="max-w-5xl mx-auto px-6 py-12 scroll-mt-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-bold mb-1 text-white">
+            <h2 className={`text-2xl font-bold mb-1 ${lightMode ? 'text-gray-900' : 'text-white'}`}>
               Featured Projects
             </h2>
-            <p className="text-gray-400">
+            <p className={lightMode ? 'text-gray-600' : 'text-gray-400'}>
               Click on any project to explore the interactive 3D view
             </p>
           </div>
-          <div className="text-sm text-gray-400">
+          <div className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-400'}`}>
             {projects.length} projects
           </div>
         </div>
@@ -417,7 +469,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
         </div>
         
         {projects.length === 0 && (
-          <div className="text-center py-16 text-gray-400">
+          <div className={`text-center py-16 ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>
             <Package size={48} className="mx-auto mb-4 opacity-50" />
             <p>No projects yet. Add some in the admin panel!</p>
           </div>
@@ -425,10 +477,14 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
       </section>
       
       {/* Footer */}
-      <footer className="border-t border-gray-800 bg-gray-900/50">
+      <footer className={`border-t ${
+        lightMode
+          ? 'border-gray-200 bg-gray-100/50'
+          : 'border-gray-800 bg-gray-900/50'
+      }`}>
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">
+            <p className={`text-sm ${lightMode ? 'text-gray-600' : 'text-gray-500'}`}>
               © {new Date().getFullYear()} {welcomePageData.name}. Built with passion and precision.
             </p>
             <div className="flex items-center gap-3">
@@ -440,7 +496,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                     href={href}
                     target={link.platform === 'email' ? undefined : '_blank'}
                     rel={link.platform === 'email' ? undefined : 'noopener noreferrer'}
-                    className="text-gray-500 hover:text-gray-300 transition-colors"
+                    className={`transition-colors ${lightMode ? 'text-gray-600 hover:text-gray-900' : 'text-gray-500 hover:text-gray-300'}`}
                     title={link.label || link.platform}
                   >
                     {link.icon ? (
@@ -448,7 +504,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
                         src={link.icon}
                         alt={link.label || link.platform}
                         className="w-5 h-5 object-contain"
-                        style={{ filter: 'invert(1) brightness(0.6)' }}
+                        style={{ filter: lightMode ? 'grayscale(1) brightness(0.4)' : 'invert(1) brightness(0.6)' }}
                       />
                     ) : (
                       <>
