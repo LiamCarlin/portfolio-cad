@@ -42,7 +42,7 @@ const categoryGradients: Record<string, string> = {
   other: 'from-gray-500 to-slate-600',
 };
 
-// Scroll Dot Indicator Component
+// Modern Scroll Progress Indicator Component
 function ScrollDotIndicator({ activeSection }: { activeSection: string }) {
   const sections = [
     { id: 'hero', label: 'Home' },
@@ -58,42 +58,56 @@ function ScrollDotIndicator({ activeSection }: { activeSection: string }) {
   };
   
   const activeIndex = sections.findIndex(s => s.id === activeSection);
+  const progress = activeIndex >= 0 ? (activeIndex / (sections.length - 1)) * 100 : 0;
   
   return (
-    <div className="fixed left-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex flex-col items-center">
-      {/* Glass background pill */}
-      <div className="absolute inset-y-[-12px] -inset-x-2.5 bg-gray-900/60 backdrop-blur-md rounded-full border border-white/10" />
-      
-      <div className="relative flex flex-col items-center gap-6 py-3">
-        {sections.map((section, index) => {
-          const isActive = activeSection === section.id;
-          const isPast = index < activeIndex;
-          
-          return (
-            <button
-              key={section.id}
-              onClick={() => scrollToSection(section.id)}
-              className="group relative flex items-center"
-              aria-label={`Go to ${section.label}`}
-            >
-              {/* Label tooltip - appears on hover */}
-              <div className="absolute left-8 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none bg-gray-900/95 backdrop-blur-sm text-white border border-white/10 shadow-xl">
-                {section.label}
-              </div>
-              
-              {/* Dot */}
-              <div className={`
-                w-2.5 h-2.5 rounded-full transition-all duration-500 ease-out
-                ${isActive 
-                  ? 'bg-white scale-125 shadow-lg shadow-white/40' 
-                  : isPast 
-                    ? 'bg-white/60 scale-100' 
-                    : 'bg-gray-600 scale-100 group-hover:bg-gray-400'
-                }
-              `} />
-            </button>
-          );
-        })}
+    <div className="fixed left-8 top-1/2 -translate-y-1/2 z-50 hidden md:flex flex-col items-center gap-4">
+      {/* Modern vertical progress track */}
+      <div className="relative flex flex-col items-center">
+        {/* Background track */}
+        <div className="w-[3px] h-32 bg-gradient-to-b from-gray-700/40 via-gray-600/30 to-gray-700/40 rounded-full overflow-hidden">
+          {/* Active progress bar with gradient */}
+          <div 
+            className="w-full bg-gradient-to-b from-blue-500 via-blue-400 to-purple-500 rounded-full transition-all duration-700 ease-out shadow-lg shadow-blue-500/50 mt-[8px]"
+            style={{ height: `calc(${progress}% - 16px)` }}
+          />
+        </div>
+        
+        {/* Interactive section markers */}
+        <div className="absolute inset-0 flex flex-col justify-between py-0">
+          {sections.map((section, index) => {
+            const isActive = activeSection === section.id;
+            const isPast = index < activeIndex;
+            
+            return (
+              <button
+                key={section.id}
+                onClick={() => scrollToSection(section.id)}
+                className="group relative flex items-center justify-center"
+                aria-label={`Go to ${section.label}`}
+              >
+                {/* Label tooltip with smooth slide-in */}
+                <div className="absolute left-7 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transform scale-95 group-hover:scale-100 -translate-x-1 group-hover:translate-x-0 transition-all duration-300 pointer-events-none bg-gradient-to-r from-gray-900 to-gray-800 text-white border border-gray-700 shadow-2xl shadow-black/50">
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 border-l border-t border-gray-700 rotate-45" />
+                  {section.label}
+                </div>
+                
+                {/* Modern dot with glow effect */}
+                <div className="relative">
+                  <div className={`
+                    rounded-full transition-all duration-500 ease-out relative z-10
+                    ${isActive 
+                      ? 'w-4 h-4 bg-gradient-to-br from-blue-400 to-purple-500 shadow-lg shadow-blue-500/60' 
+                      : isPast 
+                        ? 'w-3 h-3 bg-gradient-to-br from-blue-300 to-blue-400 shadow-md shadow-blue-400/40' 
+                        : 'w-2.5 h-2.5 bg-gray-500 group-hover:bg-gray-400 group-hover:w-3 group-hover:h-3 group-hover:shadow-md group-hover:shadow-gray-400/40'
+                    }
+                  `} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -182,6 +196,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
   const [showExperience, setShowExperience] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const lightMode = theme === 'light';
   const bannerDarkness = (welcomePageData.bannerDarkness ?? 60) / 100;
@@ -195,31 +210,36 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   
   // Scroll tracking for section indicator
   useEffect(() => {
+    const sections = ['hero', 'about', 'projects'];
+    const container = containerRef.current;
+    
+    if (!container || !hasHydrated) return;
+    
     const handleScroll = () => {
-      const sections = ['hero', 'about', 'projects'];
-      const scrollPosition = window.scrollY + 200; // Fixed offset from top
+      const scrollPosition = container.scrollTop + container.clientHeight / 3;
       
-      for (let i = sections.length - 1; i >= 0; i--) {
-        const element = document.getElementById(sections[i]);
+      for (const sectionId of sections) {
+        const element = document.getElementById(sectionId);
         if (element) {
-          const rect = element.getBoundingClientRect();
-          const elementTop = window.scrollY + rect.top;
-          if (scrollPosition >= elementTop) {
-            setActiveSection(sections[i]);
+          const { offsetTop, offsetHeight } = element;
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            setActiveSection(sectionId);
             break;
           }
         }
       }
     };
     
-    // Add slight delay for initial check
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Initial check with a slight delay
     const timer = setTimeout(handleScroll, 100);
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    
     return () => {
+      container.removeEventListener('scroll', handleScroll);
       clearTimeout(timer);
-      window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [hasHydrated]); // Re-run when hasHydrated changes and on mount/unmount
   
   // Load banner image: prefer exported URL, fall back to IndexedDB
   useEffect(() => {
@@ -261,7 +281,7 @@ export default function HomePage({ onSelectProject }: HomePageProps) {
   
   return (
     <>
-    <div className={`min-h-screen scroll-smooth ${lightMode ? 'bg-gray-50' : 'bg-gray-950'}`} suppressHydrationWarning>
+    <div ref={containerRef} className={`min-h-screen h-screen overflow-y-auto scroll-smooth ${lightMode ? 'bg-gray-50' : 'bg-gray-950'}`} suppressHydrationWarning>
       {/* Theme toggle button */}
       <button
         onClick={toggleTheme}

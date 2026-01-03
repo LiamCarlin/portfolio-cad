@@ -416,12 +416,12 @@ export const usePortfolioStore = create<PortfolioState>()(
             try {
               const stored = JSON.parse(localStorage.getItem('portfoliocad-store') || '{}');
               const state = stored.state || {};
-              return state.theme || 'light';
+              return state.theme || 'dark';
             } catch {
-              return 'light';
+              return 'dark';
             }
           })()
-        : 'light'),
+        : 'dark'),
       
       // Admin/Edit mode
       isAuthenticated: false,
@@ -838,6 +838,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         if (version < 4) {
           const state = persisted as any;
           return {
+            // Default to dark mode for legacy persisted data
             theme: state?.theme ?? 'dark',
           };
         }

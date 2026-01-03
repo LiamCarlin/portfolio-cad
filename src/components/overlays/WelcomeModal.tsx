@@ -222,19 +222,32 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
             {slide.content}
           </div>
 
-          {/* Progress dots */}
-          <div className="flex items-center justify-center gap-2 mt-6 mb-6">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentSlide
-                    ? 'w-6 bg-blue-500'
-                    : 'bg-gray-600 hover:bg-gray-500'
-                }`}
-              />
-            ))}
+          {/* Modern Progress Indicator */}
+          <div className="flex items-center justify-center gap-3 mt-6 mb-6">
+            {slides.map((_, index) => {
+              const isActive = index === currentSlide;
+              const isPast = index < currentSlide;
+              
+              return (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className="group relative"
+                  aria-label={`Go to slide ${index + 1}`}
+                >
+                  {/* The dot itself */}
+                  <div className={`
+                    rounded-full transition-all duration-500 ease-out relative
+                    ${isActive 
+                      ? 'w-8 h-2.5 bg-gradient-to-r from-blue-500 via-blue-400 to-purple-500 shadow-lg shadow-blue-500/50' 
+                      : isPast 
+                        ? 'w-2.5 h-2.5 bg-gradient-to-br from-blue-400 to-blue-500 shadow-md shadow-blue-400/30' 
+                        : 'w-2 h-2 bg-gray-600 group-hover:bg-gray-500 group-hover:w-2.5 group-hover:h-2.5 group-hover:shadow-md group-hover:shadow-gray-500/30'
+                    }
+                  `} />
+                </button>
+              );
+            })}
           </div>
 
           {/* Footer */}

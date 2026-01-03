@@ -98,16 +98,10 @@ export default function CADLayout() {
   const { showWelcome, closeWelcome, openWelcome } = useWelcomeModal();
   const { isLoading } = useProjectsLoader();
   
-  // Initialize theme on mount
+  // Initialize theme on mount - default to dark mode
   useEffect(() => {
     const savedTheme = localStorage.getItem('portfoliocad-theme') as 'dark' | 'light' | null;
-    
-    let initialTheme = savedTheme;
-    
-     // If no saved theme, default to light mode
-    if (!initialTheme) {
-       initialTheme = 'light';
-    }
+    const initialTheme = savedTheme || 'dark';
     
     setTheme(initialTheme);
     document.documentElement.classList.add(initialTheme);
