@@ -371,8 +371,13 @@ export function WelcomePageEditor({ isOpen = true, onClose }: WelcomePageEditorP
                     className="w-full h-full object-cover"
                   />
                   <div 
-                    className="absolute inset-0 bg-black transition-opacity"
-                    style={{ opacity: (formData.bannerDarkness ?? 30) / 100 }}
+                    className="absolute inset-0 transition-all"
+                    style={{ 
+                      backgroundImage: `linear-gradient(to bottom, 
+                        rgba(0,0,0,${(formData.bannerDarkness ?? 30) / 100}),
+                        rgba(0,0,0,${Math.min((formData.bannerDarkness ?? 30) / 100 + 0.1, 1)}),
+                        rgba(0,0,0,${(formData.bannerDarkness ?? 30) / 100}))`
+                    }}
                   />
                   <p className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">
                     Sample Text Preview

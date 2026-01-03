@@ -47,6 +47,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { projects, welcomePageData, bannerImageData, profileImageData, experienceEntries } = body ?? {};
 
+    console.log('=== SAVE-SITE DEBUG ===');
+    console.log('Received welcomePageData:', JSON.stringify(welcomePageData, null, 2));
+    console.log('bannerDarkness value:', welcomePageData?.bannerDarkness);
+    console.log('=====================');
+
     if (!projects || !Array.isArray(projects)) {
       return NextResponse.json({ error: 'projects must be an array' }, { status: 400 });
     }
@@ -85,7 +90,21 @@ export async function POST(request: Request) {
     }));
 
     // Process banner image if provided
-    const processedWelcome = { ...welcomePageData };
+    const processedWelcome = { 
+      ...welcomePageData,
+      // Explicitly preserve all welcome page properties
+      name: welcomePageData.name || '',
+      title: welcomePageData.title || '',
+      school: welcomePageData.school || '',
+      bio: welcomePageData.bio || '',
+      socialLinks: welcomePageData.socialLinks || [],
+      bannerImageId: welcomePageData.bannerImageId,
+      bannerDarkness: welcomePageData.bannerDarkness ?? 30,
+      profileImageId: welcomePageData.profileImageId,
+      aboutTitle: welcomePageData.aboutTitle || '',
+      aboutContent: welcomePageData.aboutContent || '',
+    };
+    
     if (bannerImageData && typeof bannerImageData === 'string' && bannerImageData.startsWith('data:')) {
       const url = await writeImageFromDataUrl(uploadsDir, bannerImageData, 'welcome-banner');
       if (url) {
@@ -120,6 +139,10 @@ export async function POST(request: Request) {
       experienceEntries: processedExperience,
       savedAt: new Date().toISOString(),
     };
+
+    console.log('=== WRITING TO FILE ===');
+    console.log('Payload welcomePageData:', JSON.stringify(processedWelcome, null, 2));
+    console.log('=====================');
 
     const filePath = path.join(process.cwd(), 'public', 'data', 'siteData.json');
     await fs.writeFile(filePath, JSON.stringify(payload, null, 2), 'utf-8');

@@ -1649,7 +1649,7 @@
     "bannerImageUrl": "uploads/welcome-banner.jpg",
     "profileImageId": "profile-1766519216997",
     "profileImageUrl": "uploads/profile.png",
-    "bannerDarkness": 60,
+    "bannerDarkness": 80,
     "aboutTitle": "About This Portfolio",
     "aboutContent": "I built this interactive portfolio because I love to build and CAD was the first entry that I had to the engineering world and has been a core part of how I think/create for as long as I can remember. What started with experimenting in Tinkercad grew into a deep love for CAD tools like Onshape, and this site reflects that journey - each project includes fully interactive 3D models you can explore, rotate, and inspect, mirroring how I design, review, and communicate my real engineering work.",
     "bannerImageId": "banner-1766476455151"
@@ -1689,5 +1689,5 @@
       "logoUrl": "uploads/exp-c3chkc96j8d-logo.png"
     }
   ],
-  "savedAt": "2025-12-31T17:51:46.042Z"
+  "savedAt": "2026-01-03T10:11:23.137Z"
 }

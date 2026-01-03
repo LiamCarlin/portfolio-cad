@@ -318,6 +318,8 @@ export default function AdminPage() {
         body: JSON.stringify({ projects, welcomePageData, bannerImageData, profileImageData, experienceEntries }),
       });
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Save failed:', res.status, errorText);
         throw new Error('Save failed');
       }
       showNotification('success', 'Saved to data files. Commit & push to publish.');

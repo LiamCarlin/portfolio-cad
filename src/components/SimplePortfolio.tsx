@@ -884,8 +884,7 @@ export default function SimplePortfolio() {
             <div
               className="absolute inset-0"
               style={{
-                backgroundColor: lightMode ? 'rgba(255,255,255,1)' : 'rgba(3,7,18,1)',
-                opacity: bannerDarkness,
+                backgroundImage: `linear-gradient(to bottom, ${lightMode ? 'rgba(255,255,255,' : 'rgba(3,7,18,'} ${bannerDarkness}), ${lightMode ? 'rgba(255,255,255,' : 'rgba(3,7,18,'} ${Math.min(bannerDarkness + 0.1, 1)}), ${lightMode ? 'rgba(255,255,255,' : 'rgba(3,7,18,'} ${bannerDarkness}))`,
               }}
             />
           </div>
