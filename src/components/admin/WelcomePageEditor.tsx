@@ -285,7 +285,7 @@ export function WelcomePageEditor({ isOpen = true, onClose }: WelcomePageEditorP
               <textarea
                 value={formData.bio}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                className={`${inputClass} resize-none h-24`}
+                className={`${inputClass} resize-y h-24`}
                 placeholder="Tell people about yourself..."
               />
             </div>
@@ -611,7 +611,7 @@ export function WelcomePageEditor({ isOpen = true, onClose }: WelcomePageEditorP
               <textarea
                 value={formData.aboutContent}
                 onChange={(e) => setFormData({ ...formData, aboutContent: e.target.value })}
-                className={`${inputClass} resize-none h-32`}
+                className={`${inputClass} resize-y h-32`}
                 placeholder="Describe your portfolio..."
               />
             </div>

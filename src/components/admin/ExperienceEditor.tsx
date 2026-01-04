@@ -38,7 +38,10 @@ function newExperience(): ExperienceEntry {
 export default function ExperienceEditor() {
   const storeItems = usePortfolioStore((s) => s.experienceEntries);
   const setItems = usePortfolioStore((s) => s.setExperienceEntries);
+  const theme = usePortfolioStore((s) => s.theme);
   const [items, setLocalItems] = useState<ExperienceEntry[]>(storeItems || []);
+  
+  const lightMode = theme === 'light';
 
   useEffect(() => {
     setLocalItems(storeItems || []);
@@ -77,12 +80,12 @@ export default function ExperienceEditor() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Experience</h2>
+        <h2 className={`text-xl font-semibold ${lightMode ? 'text-gray-900' : 'text-white'}`}>Experience</h2>
         <button onClick={addItem} className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Add Entry</button>
       </div>
 
       {items.length === 0 && (
-        <p className="text-sm text-gray-500">No experience entries yet. Click "Add Entry" to create one.</p>
+        <p className={`text-sm ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>No experience entries yet. Click "Add Entry" to create one.</p>
       )}
 
       <div className="space-y-4">
@@ -92,13 +95,13 @@ export default function ExperienceEditor() {
           const isPresent = !item.endDate || item.endDate.toLowerCase() === 'present';
           
           return (
-            <div key={item.id} className="rounded border p-4 space-y-3 bg-white/50 dark:bg-gray-800/50">
+            <div key={item.id} className={`rounded border p-4 space-y-3 ${lightMode ? 'bg-white border-gray-200' : 'bg-gray-800 border-gray-700'}`}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Logo upload and preview */}
               <div>
-                <label className="block text-sm font-medium">Logo</label>
+                <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>Logo</label>
                 <div className="mt-1 flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-300 bg-white dark:bg-gray-900 flex items-center justify-center">
+                  <div className={`w-14 h-14 rounded-lg overflow-hidden border flex items-center justify-center ${lightMode ? 'border-gray-300 bg-white' : 'border-gray-600 bg-gray-900'}`}>
                     {item.logoFile ? (
                       <img src={item.logoFile} alt="Logo" className="w-full h-full object-cover" />
                     ) : (
@@ -122,26 +125,26 @@ export default function ExperienceEditor() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium">Organization</label>
+                <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>Organization</label>
                 <input
-                  className="mt-1 w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                  className={`mt-1 w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                   value={item.organization}
                   onChange={(e) => updateItem(item.id, { organization: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium">Role</label>
+                <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>Role</label>
                 <input
-                  className="mt-1 w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                  className={`mt-1 w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                   value={item.role}
                   onChange={(e) => updateItem(item.id, { role: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium">Start Date</label>
+                <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>Start Date</label>
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   <select
-                    className="w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                    className={`w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                     value={startParsed?.month || ''}
                     onChange={(e) => {
                       const year = startParsed?.year || currentYear.toString();
@@ -152,7 +155,7 @@ export default function ExperienceEditor() {
                     {months.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select
-                    className="w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                    className={`w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                     value={startParsed?.year || ''}
                     onChange={(e) => {
                       const month = startParsed?.month || 'January';
@@ -165,7 +168,7 @@ export default function ExperienceEditor() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium">End Date</label>
+                <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>End Date</label>
                 <div className="mt-1 space-y-2">
                   <label className="flex items-center gap-2">
                     <input
@@ -181,7 +184,7 @@ export default function ExperienceEditor() {
                   {!isPresent && (
                     <div className="grid grid-cols-2 gap-2">
                       <select
-                        className="w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                        className={`w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                         value={endParsed?.month || ''}
                         onChange={(e) => {
                           const year = endParsed?.year || currentYear.toString();
@@ -192,7 +195,7 @@ export default function ExperienceEditor() {
                         {months.map(m => <option key={m} value={m}>{m}</option>)}
                       </select>
                       <select
-                        className="w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                        className={`w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                         value={endParsed?.year || ''}
                         onChange={(e) => {
                           const month = endParsed?.month || 'January';
@@ -207,17 +210,17 @@ export default function ExperienceEditor() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium">Location</label>
+                <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>Location</label>
                 <input
-                  className="mt-1 w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                  className={`mt-1 w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                   value={item.location || ''}
                   onChange={(e) => updateItem(item.id, { location: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium">Link</label>
+                <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>Link</label>
                 <input
-                  className="mt-1 w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                  className={`mt-1 w-full rounded border px-3 py-2 ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                   placeholder="https://..."
                   value={item.link || ''}
                   onChange={(e) => updateItem(item.id, { link: e.target.value })}
@@ -225,9 +228,9 @@ export default function ExperienceEditor() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium">Description</label>
+              <label className={`block text-sm font-medium ${lightMode ? 'text-gray-700' : 'text-gray-300'}`}>Description</label>
               <textarea
-                className="mt-1 w-full rounded border px-3 py-2 bg-white dark:bg-gray-900"
+                className={`mt-1 w-full rounded border px-3 py-2 resize-y ${lightMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-gray-900 border-gray-700 text-white'}`}
                 rows={3}
                 value={item.description || ''}
                 onChange={(e) => updateItem(item.id, { description: e.target.value })}

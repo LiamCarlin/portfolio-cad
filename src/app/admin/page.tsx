@@ -27,6 +27,8 @@ import {
   Boxes,
   Tag,
   FileText,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Project, Milestone, ContentBlock, TaggedPart, Subsystem, UploadedImage, usePortfolioStore } from '@/store/usePortfolioStore';
 import Link from 'next/link';
@@ -42,8 +44,8 @@ const CADModelViewer = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-gray-900">
-        <div className="text-gray-400">Loading 3D viewer...</div>
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-400">
+        <div>Loading 3D viewer...</div>
       </div>
     )
   }
@@ -55,8 +57,8 @@ const SubsystemCADAnnotator = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full h-64 flex items-center justify-center bg-gray-900 rounded-lg">
-        <div className="text-gray-400">Loading annotation tool...</div>
+      <div className="w-full h-64 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-400">
+        <div>Loading annotation tool...</div>
       </div>
     )
   }
@@ -172,7 +174,7 @@ export default function AdminPage() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [viewMode, setViewMode] = useState<'welcome' | 'experience' | 'projects'>('projects');
-  const { theme, welcomePageData } = usePortfolioStore();
+  const { theme, welcomePageData, toggleTheme } = usePortfolioStore();
   const lightMode = theme === 'light';
 
   // Get updateWelcomePageData from store for reloading after save
@@ -455,6 +457,18 @@ export const sampleProjects: Project[] = ${JSON.stringify(projects, null, 2)};
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border ${
+                lightMode
+                  ? 'bg-white hover:bg-gray-100 text-gray-700 border-gray-200'
+                  : 'bg-gray-800/80 hover:bg-gray-700 text-gray-200 border-gray-700'
+              }`}
+              title={lightMode ? 'Switch to dark mode' : 'Switch to light mode'}
+            >
+              {lightMode ? <Moon size={18} /> : <Sun size={18} />}
+              <span className="text-sm font-medium">{lightMode ? 'Dark mode' : 'Light mode'}</span>
+            </button>
             <label className={`flex items-center gap-2 px-4 py-2 ${lightMode ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-gray-800 hover:bg-gray-700 text-white'} rounded-lg cursor-pointer transition-colors`}>
               <Upload size={18} />
               Import
@@ -776,7 +790,7 @@ function ProjectDetailsForm({ project, onUpdate, lightMode }: { project: Project
           onChange={(e) => onUpdate({ description: e.target.value })}
           rows={3}
           placeholder="Brief overview of the project..."
-          className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
+          className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-y ${inputClass}`}
         />
       </div>
 
@@ -788,7 +802,7 @@ function ProjectDetailsForm({ project, onUpdate, lightMode }: { project: Project
             onChange={(e) => onUpdate({ challenge: e.target.value })}
             rows={2}
             placeholder="What problem did you solve?"
-            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
+            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-y ${inputClass}`}
           />
         </div>
         <div>
@@ -798,7 +812,7 @@ function ProjectDetailsForm({ project, onUpdate, lightMode }: { project: Project
             onChange={(e) => onUpdate({ solution: e.target.value })}
             rows={2}
             placeholder="How did you solve it?"
-            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
+            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-y ${inputClass}`}
           />
         </div>
         <div>
@@ -808,7 +822,7 @@ function ProjectDetailsForm({ project, onUpdate, lightMode }: { project: Project
             onChange={(e) => onUpdate({ impact: e.target.value })}
             rows={2}
             placeholder="What were the results?"
-            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-none ${inputClass}`}
+            className={`w-full rounded-lg px-3 py-2 focus:outline-none resize-y ${inputClass}`}
           />
         </div>
       </div>
@@ -1107,7 +1121,7 @@ function ContentBlockItem({
             onChange={(e) => onUpdate({ content: e.target.value })}
             placeholder="Enter your text content... Supports multiple paragraphs."
             rows={4}
-            className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none`}
+            className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-y`}
           />
         )}
 
@@ -1119,7 +1133,7 @@ function ContentBlockItem({
               onChange={(e) => onUpdate({ content: e.target.value })}
               placeholder="Enter quote text..."
               rows={2}
-              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none`}
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-y`}
             />
             <input
               type="text"
@@ -1336,7 +1350,7 @@ function ContentBlockItem({
               onChange={(e) => onUpdate({ content: e.target.value })}
               placeholder="Description (optional)"
               rows={2}
-              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-none text-sm`}
+              className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none resize-y text-sm`}
             />
           </div>
         )}
@@ -1526,7 +1540,7 @@ function SubsystemItem({
               value={subsystem.description}
               onChange={(e) => onUpdate({ description: e.target.value })}
               rows={2}
-              className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-none ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
+              className={`w-full rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none resize-y ${lightMode ? 'bg-white border border-gray-300 text-gray-900' : 'bg-gray-800 border border-gray-700'}`}
             />
           </div>
 

@@ -6,8 +6,8 @@
       "year": 2025,
       "category": "robotics",
       "description": "Scribblz is an autonomous wall-climbing robot designed to draw user-defined artwork on vertical glass surfaces. The system uses a suction-based adhesion mechanism to maintain contact with the window, combined with holonomic omni-wheel drive for smooth, precise planar motion. A servo-controlled marker lift enables accurate stroke placement and clean transitions between drawing segments, allowing Scribblz to convert digital images into physical drawings directly on glass.",
-      "challenge": "Design a wall-climbing robot capable of reliably adhering to vertical glass while maintaining precise planar motion for drawing. The system needed to generate sufficient suction despite low wheel friction, minimize weight to reduce peel-off torque, and maintain a consistent seal across imperfect surfaces. Additional challenges included achieving stable traction without transferring force into the suction skirt, managing tight impeller tolerances with limited fabrication accuracy, and enabling accurate localization and repeatable docking without onboard battery power.",
-      "solution": "Developed a suction-based wall-climbing robot centered around a compact, backward-facing centrifugal impeller optimized for maximum pressure generation and low center of mass. Designed a lightweight, fully 3D-printed chassis with a three-motor Kiwi drive to enable simultaneous translation and rotation, while mechanically locking motor mounts to ensure force transfer into the wheels rather than the suction skirt. Implemented a highly compliant, low-friction skirt using segmented straws to maintain a consistent vacuum seal across imperfect glass surfaces. To enable precise navigation and drawing, integrated LiDAR-based global localization with IMU heading estimation, supported by a tethered docking station that provides power, wire management, repeatable homing, and vision-safe cable control.",
+      "challenge": "Design a wall-climbing robot capable of reliable glass adhesion and precise planar motion despite low friction, strict weight limits, sealing challenges on imperfect surfaces, tight impeller tolerances, and the need for accurate localization without onboard power.",
+      "solution": "Built a suction-based wall-climbing robot using a compact high-pressure centrifugal impeller and low center of mass. Designed a lightweight 3D-printed chassis with a three-motor Kiwi drive and a compliant low-friction skirt for reliable sealing on imperfect glass. Integrated LiDAR and IMU for localization, with a tethered docking station for power, cable management, and repeatable homing.",
       "impact": "Delivered a fully integrated robotic system that validated suction-based vertical locomotion under strict weight, friction, and tolerance constraints. The project resulted in a repeatable design framework for high-pressure centrifugal impeller integration, compliant low-friction sealing, and force-efficient drivetrain mounting on smooth surfaces. Insights from CFD, material selection, and tolerance sensitivity directly informed multiple design iterations and established clear guidelines for future wall-climbing and adhesion-based robotic systems.",
       "role": "Lead Mechanical Engineer",
       "tools": [
@@ -1656,38 +1656,82 @@
   },
   "experienceEntries": [
     {
-      "id": "n2px2go2dzr",
-      "organization": "PTC",
-      "role": "Engineer",
-      "startDate": "June 2019",
+      "id": "baja-project-manager",
+      "organization": "Olin Baja",
+      "role": "Project Manager",
+      "startDate": "April 2025",
+      "endDate": "Present",
+      "location": "On-site",
+      "description": "Lead a multidisciplinary team of 85 student engineers, serving as the primary point of accountability for all technical and organizational deliverables.",
+      "link": "",
+      "logoUrl": "uploads/exp-baja-project-manager-logo.png"
+    },
+    {
+      "id": "baja-drivetrain-lead",
+      "organization": "Olin Baja",
+      "role": "Drivetrain Lead",
+      "startDate": "January 2025",
       "endDate": "April 2025",
-      "location": "Boston, MA",
+      "location": "On-site",
+      "description": "Drivetrain Team Lead | Olin College Baja SAE\nLead Engineer, Drivetrain Subsystem (8-person team)\n\nPropshaft → Chain Drive Transition\nSpearheaded the switch from propshaft to a robust single-stage chain drive, improving power transfer efficiency and serviceability under off-road loads.\n\nData-Driven Design & Simulation\nDeveloped a Python-based gear-ratio optimization tool that integrates engine torque curves, CVT pulley geometry, rolling resistance and aerodynamic drag. Used the model to select optimal pulley and sprocket sizes for target acceleration and a 30 mph top speed.\n\nComponent Specification & Sourcing\nSpecified high-strength belt-drive and chain components—variator pulleys, drive belts, sprockets—calculating belt wrap angles and tension requirements to eliminate slippage during high-torque launches.\n\nPackaging & Integration\nEngineered compact packaging solutions to nest the CVT housing and chain run within the semi-trailing-arm rear suspension. Designed custom mounting plates and bearing blocks to seamlessly interface the gearbox with chassis tubes and control-arm mounts.\n\nBOM Management & Cost Tracking\nManaged the drivetrain Bill of Materials and vendor quotes as part of a $40 K vehicle budget, tracking expenses for pulleys, belts, sprockets, brackets, and fasteners to ensure on-budget delivery.\n\nCross-Functional Leadership\nLed and mentored a team of eight engineers, coordinating parallel workflows across suspension, chassis, and cost-analysis subteams to deliver a fully integrated, data-validated drivetrain solution.",
+      "link": "",
+      "logoUrl": "uploads/exp-baja-drivetrain-lead-logo.png"
+    },
+    {
+      "id": "baja-member",
+      "organization": "Olin Baja",
+      "role": "Member",
+      "startDate": "August 2024",
+      "endDate": "December 2024",
+      "location": "On-site",
       "description": "",
+      "link": "",
+      "logoUrl": "uploads/exp-baja-member-logo.png"
+    },
+    {
+      "id": "onshape-internship",
+      "organization": "Onshape by PTC",
+      "role": "Technical Engineering Intern",
+      "startDate": "June 2025",
+      "endDate": "August 2025",
+      "location": "Boston, Massachusetts, United States",
+      "description": "Internship",
       "link": "",
       "logoUrl": "uploads/exp-n2px2go2dzr-logo.png"
     },
     {
-      "id": "xkkufga5jjc",
-      "organization": "Quechee Club",
-      "role": "Alpine Ski Instructor",
-      "startDate": "December 2025",
-      "endDate": "",
-      "location": "",
-      "description": "",
-      "link": "",
-      "logoUrl": "uploads/exp-xkkufga5jjc-logo.webp"
-    },
-    {
-      "id": "c3chkc96j8d",
-      "organization": "Outlier AI",
+      "id": "outlier-ai",
+      "organization": "Outlier",
       "role": "AI Developer",
       "startDate": "October 2024",
-      "endDate": "",
-      "location": "",
-      "description": "",
+      "endDate": "June 2025",
+      "location": "Remote",
+      "description": "As a Large Language Model Trainer at Outlier AI, I specialize in enhancing and validating the performance of advanced general language models by integrating high-level mathematical training and analysis. My role is centered around improving the capabilities of AI systems to handle complex mathematical reasoning and problem-solving tasks with precision and clarity.",
       "link": "",
-      "logoUrl": "uploads/exp-c3chkc96j8d-logo.png"
+      "logoUrl": "uploads/exp-outlier-ai-logo.png"
+    },
+    {
+      "id": "theburbles-founder",
+      "organization": "TheBurbles",
+      "role": "Founder",
+      "startDate": "January 2020",
+      "endDate": "May 2025",
+      "location": "Winchester, Massachusetts, United States",
+      "description": "Start-up Ventures, Google Ads and +7 skills",
+      "link": "",
+      "logoUrl": "uploads/exp-theburbles-founder-logo.png"
+    },
+    {
+      "id": "quechee-ski-instructor",
+      "organization": "Quechee Club",
+      "role": "Alpine Ski Instructor",
+      "startDate": "December 2019",
+      "endDate": "April 2025",
+      "location": "Quechee, Vermont, United States",
+      "description": "U-14 Down Hill Alpine Ski instructor for the Quechee Club. Team Leadership, Teamwork and +2 skills",
+      "link": "",
+      "logoUrl": "uploads/exp-xkkufga5jjc-logo.webp"
     }
   ],
-  "savedAt": "2026-01-03T10:11:23.137Z"
+  "savedAt": "2026-01-04T09:13:03.370Z"
 }
