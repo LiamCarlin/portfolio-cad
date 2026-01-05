@@ -844,6 +844,11 @@
           "type": "quote",
           "content": "The intersection of robotics and art opens up possibilities we never imagined. Scribblz is just the beginning.",
           "author": "Project Reflection"
+        },
+        {
+          "id": "block-1767520144680-0k55t848u",
+          "type": "image",
+          "content": ""
         }
       ],
       "cadModel": {
@@ -1733,5 +1738,5 @@
       "logoUrl": "uploads/exp-xkkufga5jjc-logo.webp"
     }
   ],
-  "savedAt": "2026-01-04T09:13:03.370Z"
+  "savedAt": "2026-01-04T09:54:12.492Z"
 }

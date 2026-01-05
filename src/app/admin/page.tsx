@@ -933,6 +933,7 @@ function ProjectDetailsForm({ project, onUpdate, lightMode }: { project: Project
 // Content Blocks Editor - Flexible content sections
 function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Project; onUpdate: (updates: Partial<Project>) => void; lightMode: boolean }) {
   const blocks = project.contentBlocks || [];
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const addBlock = (type: ContentBlock['type']) => {
     const newBlock = createEmptyContentBlock(type);
@@ -958,6 +959,43 @@ function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Projec
     [newBlocks[index], newBlocks[swapIndex]] = [newBlocks[swapIndex], newBlocks[index]];
     onUpdate({ contentBlocks: newBlocks });
   };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
+    e.stopPropagation();
+    setDraggingId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const reorderBlocks = (targetId: string) => {
+    if (!draggingId || draggingId === targetId) return;
+
+    const currentIndex = blocks.findIndex(b => b.id === draggingId);
+    const targetIndex = blocks.findIndex(b => b.id === targetId);
+    if (currentIndex === -1 || targetIndex === -1) return;
+
+    const newBlocks = [...blocks];
+    const [moved] = newBlocks.splice(currentIndex, 1);
+    newBlocks.splice(targetIndex, 0, moved);
+    onUpdate({ contentBlocks: newBlocks });
+    setDraggingId(moved.id);
+  };
+
+  const handleDragEnter = (targetId: string) => {
+    reorderBlocks(targetId);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDraggingId(null);
+  };
+
+  const handleDragEnd = () => setDraggingId(null);
 
   return (
     <div className="space-y-6">
@@ -998,9 +1036,15 @@ function ContentBlocksEditor({ project, onUpdate, lightMode }: { project: Projec
               index={index}
               total={blocks.length}
               lightMode={lightMode}
+              isDragging={draggingId === block.id}
               onUpdate={(updates) => updateBlock(block.id, updates)}
               onDelete={() => deleteBlock(block.id)}
               onMove={(dir) => moveBlock(block.id, dir)}
+              onDragStart={(e) => handleDragStart(e, block.id)}
+              onDragEnter={() => handleDragEnter(block.id)}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
             />
           ))}
         </div>
@@ -1014,17 +1058,29 @@ function ContentBlockItem({
   index,
   total,
   lightMode,
+  isDragging,
   onUpdate,
   onDelete,
   onMove,
+  onDragStart,
+  onDragEnter,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   block: ContentBlock;
   index: number;
   total: number;
   lightMode: boolean;
+  isDragging: boolean;
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onDelete: () => void;
   onMove: (direction: 'up' | 'down') => void;
+  onDragStart: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnter: () => void;
+  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
 }) {
   const [listInput, setListInput] = useState('');
   const [imageInput, setImageInput] = useState('');
@@ -1055,9 +1111,21 @@ function ContentBlockItem({
   const BlockIcon = CONTENT_BLOCK_TYPES.find(t => t.type === block.type)?.icon || Type;
 
   return (
-    <div className={`${cardClass} rounded-lg overflow-hidden`}>
+    <div
+      className={`${cardClass} rounded-lg overflow-hidden ${isDragging ? 'opacity-60 ring-2 ring-blue-500' : ''}`}
+      onDragEnter={onDragEnter}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
       <div className={`flex items-center justify-between p-3 border-b ${headerClass}`}>
-        <div className="flex items-center gap-3">
+        <div
+          className="flex items-center gap-3 cursor-grab"
+          data-drag-handle
+          draggable
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+        >
           <GripVertical size={16} className={textMuted} />
           <BlockIcon size={16} className="text-blue-500" />
           <span className="font-medium capitalize">{block.type}</span>
