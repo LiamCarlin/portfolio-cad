@@ -28,6 +28,9 @@ export interface ContentBlock {
   // For image
   caption?: string;
   file?: string; // Base64 for uploaded images
+  imageWidth?: number; // Width in pixels or percentage
+  imageHeight?: number; // Height in pixels
+  imageSizeUnit?: 'px' | '%' | 'auto'; // Unit for image size
   // For gallery
   images?: string[];
   imageFiles?: string[]; // Base64 for uploaded images

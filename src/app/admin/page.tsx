@@ -182,7 +182,7 @@ export default function AdminPage() {
   const experienceEntries = usePortfolioStore((state) => state.experienceEntries);
   const setExperienceEntries = usePortfolioStore((state) => state.setExperienceEntries);
 
-  // Load projects and welcome data: prefer saved siteData.json, then localStorage, then samples
+  // Load projects and welcome data: prefer saved siteData.json, then IndexedDB, then localStorage, then samples
   useEffect(() => {
     let cancelled = false;
 
@@ -211,19 +211,52 @@ export default function AdminPage() {
         console.warn('Could not load site data file in admin:', e);
       }
 
-      // 2) If no file data, fall back to any local edits from localStorage (draft mode)
+      // 2) If no file data, fall back to any local edits from IndexedDB (draft mode)
       if (!loadedFromFile) {
-        const saved = localStorage.getItem('portfoliocad-projects');
-        if (saved) {
-          try {
-            const savedProjects: Project[] = JSON.parse(saved);
-            if (Array.isArray(savedProjects) && savedProjects.length > 0) {
-              const savedIds = new Set(savedProjects.map(p => p.id));
-              const newSampleProjects = sampleProjects.filter(sp => !savedIds.has(sp.id));
-              allProjects = [...savedProjects, ...newSampleProjects];
+        try {
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open('portfoliocad', 1);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+            request.onupgradeneeded = (e) => {
+              const db = (e.target as IDBOpenDBRequest).result;
+              if (!db.objectStoreNames.contains('projects')) {
+                db.createObjectStore('projects', { keyPath: 'id' });
+              }
+            };
+          });
+
+          const tx = db.transaction('projects', 'readonly');
+          const store = tx.objectStore('projects');
+          const savedData = await new Promise((resolve, reject) => {
+            const request = store.get('main');
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+          });
+
+          if (savedData?.data && Array.isArray(savedData.data) && savedData.data.length > 0) {
+            const savedIds = new Set(savedData.data.map(p => p.id));
+            const newSampleProjects = sampleProjects.filter(sp => !savedIds.has(sp.id));
+            allProjects = [...savedData.data, ...newSampleProjects];
+          }
+
+          db.close();
+        } catch (e) {
+          console.warn('Could not load projects from IndexedDB, checking localStorage:', e);
+          
+          // 3) Fall back to localStorage if IndexedDB fails
+          const saved = localStorage.getItem('portfoliocad-projects');
+          if (saved) {
+            try {
+              const savedProjects: Project[] = JSON.parse(saved);
+              if (Array.isArray(savedProjects) && savedProjects.length > 0) {
+                const savedIds = new Set(savedProjects.map(p => p.id));
+                const newSampleProjects = sampleProjects.filter(sp => !savedIds.has(sp.id));
+                allProjects = [...savedProjects, ...newSampleProjects];
+              }
+            } catch (e) {
+              console.error('Failed to load projects from localStorage:', e);
             }
-          } catch (e) {
-            console.error('Failed to load projects from localStorage:', e);
           }
         }
       }
@@ -238,30 +271,44 @@ export default function AdminPage() {
     return () => { cancelled = true; };
   }, [updateWelcomePageData]);
 
-  // Auto-save to localStorage
+  // Auto-save to IndexedDB (supports 50MB+ instead of localStorage's 5-10MB limit)
   useEffect(() => {
     if (projects.length > 0) {
       setSaveStatus('saving');
       const timer = setTimeout(() => {
-        try {
-          const jsonData = JSON.stringify(projects);
-          // Check if data is too large (localStorage typically has 5-10MB limit)
-          const sizeInMB = new Blob([jsonData]).size / (1024 * 1024);
-          if (sizeInMB > 4.5) {
-            console.warn(`Data size: ${sizeInMB.toFixed(2)}MB - may exceed localStorage limits`);
-            showNotification('error', `Warning: Data size (${sizeInMB.toFixed(1)}MB) is large. Some browsers may not save.`);
-          }
-          localStorage.setItem('portfoliocad-projects', jsonData);
-          setSaveStatus('saved');
-        } catch (e: any) {
-          console.error('Failed to save projects:', e);
-          setSaveStatus('unsaved');
-          if (e.name === 'QuotaExceededError' || e.message?.includes('quota')) {
-            showNotification('error', 'Storage full! Try removing some images or CAD files.');
-          } else {
+        const saveToIndexedDB = async () => {
+          try {
+            const db = await new Promise<IDBDatabase>((resolve, reject) => {
+              const request = indexedDB.open('portfoliocad', 1);
+              request.onerror = () => reject(request.error);
+              request.onsuccess = () => resolve(request.result);
+              request.onupgradeneeded = (e) => {
+                const db = (e.target as IDBOpenDBRequest).result;
+                if (!db.objectStoreNames.contains('projects')) {
+                  db.createObjectStore('projects', { keyPath: 'id' });
+                }
+              };
+            });
+
+            const tx = db.transaction('projects', 'readwrite');
+            const store = tx.objectStore('projects');
+            store.put({ id: 'main', data: projects, timestamp: Date.now() });
+
+            await new Promise((resolve, reject) => {
+              tx.oncomplete = () => resolve(true);
+              tx.onerror = () => reject(tx.error);
+            });
+
+            db.close();
+            setSaveStatus('saved');
+          } catch (e: any) {
+            console.error('Failed to save projects to IndexedDB:', e);
+            setSaveStatus('unsaved');
             showNotification('error', 'Failed to save changes.');
           }
-        }
+        };
+
+        saveToIndexedDB();
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -1254,11 +1301,65 @@ function ContentBlockItem({
               placeholder="Caption (optional)"
               className={`w-full ${inputClass} rounded px-3 py-2 focus:border-blue-500 focus:outline-none text-sm`}
             />
+            
+            {/* Image Size Customization */}
+            <div className={`p-3 rounded-lg ${lightMode ? 'bg-gray-100' : 'bg-gray-800'}`}>
+              <div className={`text-sm font-medium mb-2 ${textMuted}`}>Image Size</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={`text-xs ${textMuted} mb-1 block`}>Width</label>
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      value={block.imageWidth || ''}
+                      onChange={(e) => onUpdate({ imageWidth: e.target.value ? parseInt(e.target.value) : undefined })}
+                      placeholder="Auto"
+                      className={`flex-1 ${inputClass} rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none`}
+                      min="0"
+                    />
+                    <select
+                      value={block.imageSizeUnit || 'auto'}
+                      onChange={(e) => onUpdate({ imageSizeUnit: e.target.value as 'px' | '%' | 'auto' })}
+                      className={`${inputClass} rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none`}
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="px">px</option>
+                      <option value="%">%</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className={`text-xs ${textMuted} mb-1 block`}>Height</label>
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      value={block.imageHeight || ''}
+                      onChange={(e) => onUpdate({ imageHeight: e.target.value ? parseInt(e.target.value) : undefined })}
+                      placeholder="Auto"
+                      className={`flex-1 ${inputClass} rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none`}
+                      min="0"
+                    />
+                    <span className={`${inputClass} rounded px-2 py-1 text-sm ${textMuted}`}>px</span>
+                  </div>
+                </div>
+              </div>
+              <div className={`text-xs ${textMuted} mt-2`}>
+                Leave blank for auto sizing. Use % for responsive width.
+              </div>
+            </div>
+            
             {(block.file || block.content) && (
               <img 
                 src={block.file || block.content} 
                 alt="Preview" 
-                className={`max-w-xs rounded border ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}
+                className={`rounded border ${lightMode ? 'border-gray-200' : 'border-gray-700'}`}
+                style={{
+                  width: block.imageWidth 
+                    ? `${block.imageWidth}${block.imageSizeUnit === '%' ? '%' : 'px'}`
+                    : block.imageSizeUnit === 'auto' ? 'auto' : 'max-content',
+                  height: block.imageHeight ? `${block.imageHeight}px` : 'auto',
+                  maxWidth: '100%'
+                }}
                 onError={(e) => (e.currentTarget.style.display = 'none')}
               />
             )}

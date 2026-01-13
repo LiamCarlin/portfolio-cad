@@ -73,6 +73,13 @@ function ContentBlockRenderer({ block, lightMode }: { block: ContentBlock; light
             src={block.file} 
             alt={block.caption || 'Project image'} 
             className="w-full max-w-2xl mx-auto rounded-lg shadow-lg"
+            style={{
+              width: block.imageWidth 
+                ? `${block.imageWidth}${block.imageSizeUnit === '%' ? '%' : 'px'}`
+                : block.imageSizeUnit === 'auto' ? 'auto' : undefined,
+              height: block.imageHeight ? `${block.imageHeight}px` : 'auto',
+              maxWidth: '100%'
+            }}
           />
           {block.caption && (
             <p className={`text-sm text-center mt-2 ${lightMode ? 'text-gray-500' : 'text-gray-400'}`}>

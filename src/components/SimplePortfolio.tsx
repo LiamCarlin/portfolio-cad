@@ -81,6 +81,13 @@ function ContentBlockRenderer({ block, lightMode }: { block: ContentBlock; light
             src={imgSrc || ''} 
             alt={block.caption || ''} 
             className="w-full rounded-xl"
+            style={{
+              width: block.imageWidth 
+                ? `${block.imageWidth}${block.imageSizeUnit === '%' ? '%' : 'px'}`
+                : block.imageSizeUnit === 'auto' ? 'auto' : undefined,
+              height: block.imageHeight ? `${block.imageHeight}px` : 'auto',
+              maxWidth: '100%'
+            }}
           />
           {block.caption && (
             <figcaption className="text-sm mt-2 text-center text-gray-400">

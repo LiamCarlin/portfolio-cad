@@ -567,6 +567,13 @@ function ContentBlockRenderer({ block, lightMode }: { block: any; lightMode: boo
             src={imageSource} 
             alt={block.caption || 'Project image'} 
             className="w-full rounded-lg"
+            style={{
+              width: block.imageWidth 
+                ? `${block.imageWidth}${block.imageSizeUnit === '%' ? '%' : 'px'}`
+                : block.imageSizeUnit === 'auto' ? 'auto' : undefined,
+              height: block.imageHeight ? `${block.imageHeight}px` : 'auto',
+              maxWidth: '100%'
+            }}
           />
           {block.caption && (
             <p className={`text-xs text-center ${lightMode ? 'text-gray-400' : 'text-gray-500'}`}>
